@@ -198,7 +198,7 @@ export default function Home() {
         return;
       }
 
-      const wrongIds = Array.from(new Set(wrongAnswers.map((w) => w.question_id).filter(Boolean)));
+      const wrongIds = Array.from(new Set(wrongAnswers.map((w: any) => w.question_id).filter(Boolean)));
 
       const { data: qData, error: errQ } = await supabase
         .from('questions')
@@ -226,7 +226,7 @@ export default function Home() {
     }
   }
 
-  // 取得 Dashboard 統計數據（核心調整：落點只依據「最近 50 題」推算）
+  // 取得 Dashboard 統計數據（修正 TypeScript 推論型別）
   async function loadDashboardData() {
     setLoadingDashboard(true);
     try {
@@ -242,7 +242,7 @@ export default function Home() {
           )
         `)
         .eq('user_name', currentUser)
-        .order('created_at', { ascending: false }); // 最新的排在最前面
+        .order('created_at', { ascending: false });
 
       if (error) throw error;
 
@@ -261,16 +261,15 @@ export default function Home() {
       }
 
       const totalAnswered = data.length;
-      const totalCorrect = data.filter((d) => d.is_correct).length;
+      const totalCorrect = data.filter((d: any) => d.is_correct).length;
       const accuracy = Math.round((totalCorrect / totalAnswered) * 100);
 
-      // ★ 取出「最新 50 筆作答紀錄」來推算近期實戰落點
+      // 取出最新 50 筆作答紀錄
       const recent50Items = data.slice(0, 50);
       const recent50Count = recent50Items.length;
-      const recent50Correct = recent50Items.filter((d) => d.is_correct).length;
+      const recent50Correct = recent50Items.filter((d: any) => d.is_correct).length;
       const recent50Accuracy = Math.round((recent50Correct / recent50Count) * 100);
 
-      // 以近 50 題命中率推估多益閱讀分數（495 分滿分制）
       let estimated = '250 ~ 300';
       if (recent50Accuracy >= 92) estimated = '450 ~ 480 (金色頂尖 🌟)';
       else if (recent50Accuracy >= 85) estimated = '410 ~ 440 (金色證書門檻 🥇)';
@@ -278,10 +277,18 @@ export default function Home() {
       else if (recent50Accuracy >= 65) estimated = '310 ~ 350 (綠色證書 📗)';
       else estimated = '240 ~ 300';
 
-      // 各考點 Topic 統計
+      // 修正：相容 questions 為物件或陣列
       const topicMap = new Map<string, { total: number; correct: number }>();
-      data.forEach((item) => {
-        const t = item.questions?.topic || '綜合題型';
+      data.forEach((item: any) => {
+        let t = '綜合題型';
+        if (item.questions) {
+          if (Array.isArray(item.questions) && item.questions.length > 0) {
+            t = item.questions[0]?.topic || '綜合題型';
+          } else if (typeof item.questions === 'object') {
+            t = item.questions.topic || '綜合題型';
+          }
+        }
+
         if (!topicMap.has(t)) topicMap.set(t, { total: 0, correct: 0 });
         const obj = topicMap.get(t)!;
         obj.total += 1;
@@ -297,7 +304,7 @@ export default function Home() {
         }))
         .sort((a, b) => a.rate - b.rate);
 
-      const wrongQuestionCount = new Set(data.filter((d) => !d.is_correct).map((d) => d.question_id)).size;
+      const wrongQuestionCount = new Set(data.filter((d: any) => !d.is_correct).map((d: any) => d.question_id)).size;
 
       setAnalyticsData({
         totalAnswered,
@@ -391,7 +398,7 @@ export default function Home() {
       let currentGroup: any[] = [];
       let lastTime = 0;
 
-      data.forEach((item) => {
+      data.forEach((item: any) => {
         const itemTime = item.created_at ? new Date(item.created_at).getTime() : 0;
         if (currentGroup.length === 0) {
           currentGroup.push(item);
@@ -418,10 +425,19 @@ export default function Home() {
         const dateStr = `${month}/${date} ${hours}:${minutes}`;
 
         const total = grp.length;
-        const correct = grp.filter((i) => i.is_correct).length;
+        const correct = grp.filter((i: any) => i.is_correct).length;
         const accuracy = Math.round((correct / total) * 100);
-        const part = total >= 40 ? '🎯 50題小模考' : first.questions?.part || 'Part 5';
-        const recordIds = grp.map((i) => i.id);
+
+        let partName = 'Part 5';
+        if (first.questions) {
+          if (Array.isArray(first.questions) && first.questions.length > 0) {
+            partName = first.questions[0]?.part || 'Part 5';
+          } else if (typeof first.questions === 'object') {
+            partName = first.questions.part || 'Part 5';
+          }
+        }
+        const part = total >= 40 ? '🎯 50題小模考' : partName;
+        const recordIds = grp.map((i: any) => i.id);
 
         return {
           sessionId: `${first.created_at}-${index}`,
@@ -669,7 +685,6 @@ export default function Home() {
                       </p>
                     </div>
 
-                    {/* 🔥 錯題重練按鈕 */}
                     <button
                       onClick={handlePracticeWrongQuestions}
                       style={{
@@ -1445,7 +1460,9 @@ export default function Home() {
                     </div>
 
                     {selectedSession.items.map((item, idx) => {
-                      const qObj = item.questions;
+                      let qObj = item.questions;
+                      if (Array.isArray(qObj) && qObj.length > 0) qObj = qObj[0];
+
                       const isCorrect = item.is_correct;
                       const userChoice = item.selected_option;
                       const correctChoice = qObj?.answer;
