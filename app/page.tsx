@@ -30,7 +30,7 @@ export default function Home() {
   const [loading, setLoading] = useState(false);
   const [loadingText, setLoadingText] = useState('');
   const [cheerMsg, setCheerMsg] = useState(CHEER_MESSAGES[0]);
-  const [selectedPart, setSelectedPart] = useState<'Part 5' | 'Part 6' | 'Part 7'>('Part 5');
+  const [selectedPart, setSelectedPart] = useState<'Part 5' | 'Part 6' | 'Part 7' | 'Mock 50'>('Part 5');
 
   // 歷史紀錄相關狀態
   const [showHistoryModal, setShowHistoryModal] = useState(false);
@@ -43,48 +43,106 @@ export default function Home() {
     setCheerMsg(randomMsg);
   }, [currentIndex, isSubmitted]);
 
-  // 從題庫抽取（真隨機挑選題組與題目）
-  async function handleReviewFromBank(partToFilter = selectedPart) {
+  // 從題庫抽取（支援各 Part 與 50 題多益比例小模考）
+  async function handleReviewFromBank(partToFilter: 'Part 5' | 'Part 6' | 'Part 7' | 'Mock 50' = selectedPart) {
     setLoading(true);
-    setLoadingText(`熊咘咘正在翻【${partToFilter}】題庫... 🐾`);
+    if (partToFilter === 'Mock 50') {
+      setLoadingText('熊咘咘正在組裝【50 題多益比重全真小模擬考】... 🎯🐾');
+    } else {
+      setLoadingText(`熊咘咘正在翻【${partToFilter}】題庫... 🐾`);
+    }
+
     try {
-      const { data, error } = await supabase
-        .from('questions')
-        .select('*')
-        .eq('part', partToFilter);
+      if (partToFilter === 'Mock 50') {
+        // 抓取全部題庫來進行多益比重抽取 (Part 5: 15題, Part 6: 8題, Part 7: 27題)
+        const { data: allData, error } = await supabase.from('questions').select('*');
+        if (error) throw error;
+        if (!allData || allData.length === 0) {
+          alert('題庫目前還是空的，先請熊咘咘出題吧！ 🧸');
+          setLoading(false);
+          return;
+        }
 
-      if (error) throw error;
+        // 1. Part 5: 隨機挑 15 題
+        const p5All = allData.filter((q) => q.part === 'Part 5');
+        const p5Shuffled = [...p5All].sort(() => 0.5 - Math.random());
+        const p5Selected = p5Shuffled.slice(0, 15);
 
-      if (!data || data.length === 0) {
-        alert(`${partToFilter} 題庫目前還是空的，先請熊咘咘出新題目吧！ 🧸`);
-        setLoading(false);
-        return;
-      }
-
-      let selectedQuestions: any[] = [];
-
-      if (partToFilter === 'Part 5') {
-        const shuffled = [...data].sort(() => 0.5 - Math.random());
-        selectedQuestions = shuffled.slice(0, 5);
-      } else {
-        const contextMap = new Map<string, any[]>();
-        data.forEach((q) => {
-          const key = q.context || 'general';
-          if (!contextMap.has(key)) {
-            contextMap.set(key, []);
-          }
-          contextMap.get(key)!.push(q);
+        // 2. Part 6: 依文章題組分組，隨機抽 2 篇 (剛好 8 題)
+        const p6All = allData.filter((q) => q.part === 'Part 6');
+        const p6Map = new Map<string, any[]>();
+        p6All.forEach((q) => {
+          const key = q.context || 'p6_gen';
+          if (!p6Map.has(key)) p6Map.set(key, []);
+          p6Map.get(key)!.push(q);
         });
+        const p6Articles = Array.from(p6Map.values()).sort(() => 0.5 - Math.random());
+        const p6Selected = p6Articles.slice(0, 2).flat();
 
-        const allArticles = Array.from(contextMap.values());
-        const randomArticle = allArticles[Math.floor(Math.random() * allArticles.length)];
-        selectedQuestions = randomArticle || [];
+        // 3. Part 7: 依文章題組分組，隨機抽文章湊足 27 題
+        const p7All = allData.filter((q) => q.part === 'Part 7');
+        const p7Map = new Map<string, any[]>();
+        p7All.forEach((q) => {
+          const key = q.context || 'p7_gen';
+          if (!p7Map.has(key)) p7Map.set(key, []);
+          p7Map.get(key)!.push(q);
+        });
+        const p7Articles = Array.from(p7Map.values()).sort(() => 0.5 - Math.random());
+        let p7Selected: any[] = [];
+        for (const art of p7Articles) {
+          if (p7Selected.length + art.length <= 27) {
+            p7Selected.push(...art);
+          } else {
+            const needed = 27 - p7Selected.length;
+            p7Selected.push(...art.slice(0, needed));
+            break;
+          }
+        }
+
+        const finalMock = [...p5Selected, ...p6Selected, ...p7Selected];
+        setQuestions(finalMock);
+        setCurrentIndex(0);
+        setUserSelections({});
+        setIsSubmitted(false);
+      } else {
+        const { data, error } = await supabase
+          .from('questions')
+          .select('*')
+          .eq('part', partToFilter);
+
+        if (error) throw error;
+
+        if (!data || data.length === 0) {
+          alert(`${partToFilter} 題庫目前還是空的，先請熊咘咘出新題目吧！ 🧸`);
+          setLoading(false);
+          return;
+        }
+
+        let selectedQuestions: any[] = [];
+
+        if (partToFilter === 'Part 5') {
+          const shuffled = [...data].sort(() => 0.5 - Math.random());
+          selectedQuestions = shuffled.slice(0, 5);
+        } else {
+          const contextMap = new Map<string, any[]>();
+          data.forEach((q) => {
+            const key = q.context || 'general';
+            if (!contextMap.has(key)) {
+              contextMap.set(key, []);
+            }
+            contextMap.get(key)!.push(q);
+          });
+
+          const allArticles = Array.from(contextMap.values());
+          const randomArticle = allArticles[Math.floor(Math.random() * allArticles.length)];
+          selectedQuestions = randomArticle || [];
+        }
+
+        setQuestions(selectedQuestions);
+        setCurrentIndex(0);
+        setUserSelections({});
+        setIsSubmitted(false);
       }
-
-      setQuestions(selectedQuestions);
-      setCurrentIndex(0);
-      setUserSelections({});
-      setIsSubmitted(false);
     } catch (e: any) {
       alert('翻題庫有點卡卡，再試一次看看～');
     } finally {
@@ -95,10 +153,11 @@ export default function Home() {
   // AI 出新題組
   async function handleGenerateNewSet() {
     setLoading(true);
+    const targetPart = selectedPart === 'Mock 50' ? 'Part 5' : selectedPart;
     const targetName =
-      selectedPart === 'Part 5'
+      targetPart === 'Part 5'
         ? '5 題單句填空'
-        : selectedPart === 'Part 6'
+        : targetPart === 'Part 6'
         ? '1篇段落填空(4題)'
         : '1篇閱讀理解(3題)';
     setLoadingText(`熊咘咘正在極速生成【${targetName}】，請稍候 3~5 秒... 🧸⚡`);
@@ -107,7 +166,7 @@ export default function Home() {
       const res = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ part: selectedPart }),
+        body: JSON.stringify({ part: targetPart }),
       });
 
       const result = await res.json();
@@ -157,7 +216,7 @@ export default function Home() {
     await supabase.from('user_answers').insert(records);
   }
 
-  // 讀取歷次紀錄（已補上 options 欄位）
+  // 讀取歷次紀錄
   async function fetchHistory() {
     setLoadingHistory(true);
     setSelectedSession(null);
@@ -179,7 +238,7 @@ export default function Home() {
           )
         `)
         .order('created_at', { ascending: false })
-        .limit(200);
+        .limit(300);
 
       if (error) throw error;
       if (!data || data.length === 0) {
@@ -220,7 +279,7 @@ export default function Home() {
         const total = grp.length;
         const correct = grp.filter((i) => i.is_correct).length;
         const accuracy = Math.round((correct / total) * 100);
-        const part = first.questions?.part || 'Part 5';
+        const part = total >= 40 ? '🎯 50題小模考' : first.questions?.part || 'Part 5';
         const recordIds = grp.map((i) => i.id);
 
         return {
@@ -316,9 +375,9 @@ export default function Home() {
             </p>
           </div>
 
-          {/* 題型切換 */}
+          {/* 題型切換（含 50 題小模考） */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-            {(['Part 5', 'Part 6', 'Part 7'] as const).map((part) => (
+            {(['Part 5', 'Part 6', 'Part 7', 'Mock 50'] as const).map((part) => (
               <button
                 key={part}
                 onClick={() => {
@@ -336,7 +395,13 @@ export default function Home() {
                   color: selectedPart === part ? '#e11d48' : '#475569',
                 }}
               >
-                {part === 'Part 5' ? 'Part 5 單句' : part === 'Part 6' ? 'Part 6 段落' : 'Part 7 閱讀'}
+                {part === 'Part 5'
+                  ? 'Part 5 單句'
+                  : part === 'Part 6'
+                  ? 'Part 6 段落'
+                  : part === 'Part 7'
+                  ? 'Part 7 閱讀'
+                  : '🎯 小模擬考 (50題)'}
               </button>
             ))}
           </div>
@@ -419,7 +484,7 @@ export default function Home() {
             <div
               style={{
                 flex: '1 1 240px',
-                maxWidth: '260px',
+                maxWidth: '280px',
                 backgroundColor: '#ffffff',
                 borderRadius: '20px',
                 padding: '18px',
@@ -447,12 +512,15 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* 題號按鈕格 */}
+              {/* 題號按鈕格（依需求升級：已作答變綠色、當前題特別深框標記） */}
               <div
                 style={{
                   display: 'grid',
-                  gridTemplateColumns: `repeat(${totalQuestions <= 4 ? totalQuestions : 5}, 1fr)`,
+                  gridTemplateColumns: totalQuestions > 10 ? 'repeat(5, 1fr)' : `repeat(${totalQuestions <= 4 ? totalQuestions : 5}, 1fr)`,
                   gap: '8px',
+                  maxHeight: totalQuestions > 20 ? '360px' : 'none',
+                  overflowY: totalQuestions > 20 ? 'auto' : 'visible',
+                  paddingRight: totalQuestions > 20 ? '4px' : '0',
                   marginBottom: '16px',
                 }}
               >
@@ -463,25 +531,40 @@ export default function Home() {
                   const isCorrect = isSubmitted && selectedKey === q.answer;
                   const isWrong = isSubmitted && isAnswered && !isCorrect;
 
+                  // 預設未作答狀態
                   let bgColor = '#ffffff';
                   let borderColor = '#cbd5e1';
                   let textColor = '#0f172a';
+                  let boxShadow = 'none';
 
-                  if (isCurrent) {
-                    bgColor = '#fff1f2';
-                    borderColor = '#fb7185';
-                    textColor = '#9f1239';
+                  // 1. 已作答：變成柔和綠色底
+                  if (isAnswered) {
+                    bgColor = '#ecfdf5';
+                    borderColor = '#a7f3d0';
+                    textColor = '#065f46';
                   }
 
+                  // 2. 當前正在作答的那一題：以顯眼的深藍黑色粗邊框與發光陰影標記出來
+                  if (isCurrent) {
+                    borderColor = '#1e293b';
+                    boxShadow = '0 0 0 2.5px #1e293b';
+                    if (!isAnswered) {
+                      bgColor = '#f8fafc';
+                    }
+                  }
+
+                  // 3. 交卷後：依正解/錯誤著色
                   if (isSubmitted) {
                     if (isCorrect) {
                       bgColor = '#ecfdf5';
                       borderColor = '#10b981';
                       textColor = '#065f46';
+                      boxShadow = isCurrent ? '0 0 0 2.5px #10b981' : 'none';
                     } else if (isWrong) {
                       bgColor = '#fff1f2';
                       borderColor = '#fb7185';
                       textColor = '#9f1239';
+                      boxShadow = isCurrent ? '0 0 0 2.5px #f43f5e' : 'none';
                     }
                   }
 
@@ -498,20 +581,25 @@ export default function Home() {
                         color: textColor,
                         fontWeight: 'bold',
                         cursor: 'pointer',
+                        boxShadow: boxShadow,
+                        transition: 'all 0.15s ease',
                       }}
                     >
                       {idx + 1}
+                      {/* 右上角保持顯示所選的答案 */}
                       {isAnswered && (
                         <span
                           style={{
                             fontSize: '9px',
-                            padding: '1px 4px',
+                            padding: '1px 5px',
                             borderRadius: '9999px',
                             position: 'absolute',
                             top: '-5px',
                             right: '-5px',
                             backgroundColor: '#f43f5e',
                             color: '#ffffff',
+                            fontWeight: 'bold',
+                            boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
                           }}
                         >
                           {selectedKey}
@@ -775,7 +863,7 @@ export default function Home() {
                 border: '2px dashed #fecdd3',
               }}
             >
-              <p style={{ color: '#64748b', marginBottom: '14px' }}>目前還沒有【{selectedPart}】的題組喔！</p>
+              <p style={{ color: '#64748b', marginBottom: '14px' }}>目前還沒有題組喔！</p>
               <button
                 onClick={handleGenerateNewSet}
                 style={{
