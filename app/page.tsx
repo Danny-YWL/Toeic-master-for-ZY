@@ -18,6 +18,7 @@ interface ExamSession {
   total: number;
   correct: number;
   accuracy: number;
+  recordIds: number[];
   items: any[];
 }
 
@@ -138,6 +139,7 @@ export default function Home() {
     await supabase.from('user_answers').insert(records);
   }
 
+  // 讀取歷次紀錄
   async function fetchHistory() {
     setLoadingHistory(true);
     setSelectedSession(null);
@@ -200,6 +202,7 @@ export default function Home() {
         const correct = grp.filter((i) => i.is_correct).length;
         const accuracy = Math.round((correct / total) * 100);
         const part = first.questions?.part || 'Part 5';
+        const recordIds = grp.map((i) => i.id);
 
         return {
           sessionId: `${first.created_at}-${index}`,
@@ -208,6 +211,7 @@ export default function Home() {
           total,
           correct,
           accuracy,
+          recordIds,
           items: grp,
         };
       });
@@ -217,6 +221,30 @@ export default function Home() {
       alert('讀取歷史紀錄失敗，請稍候再試～');
     } finally {
       setLoadingHistory(false);
+    }
+  }
+
+  // 刪除單場次紀錄功能
+  async function handleDeleteSession(e: React.MouseEvent, session: ExamSession) {
+    e.stopPropagation(); // 防止點擊刪除時觸發展開
+    const confirmDelete = window.confirm(`確定要刪除 ${session.dateStr}（${session.part}）的作答紀錄嗎？`);
+    if (!confirmDelete) return;
+
+    try {
+      const { error } = await supabase
+        .from('user_answers')
+        .delete()
+        .in('id', session.recordIds);
+
+      if (error) throw error;
+
+      // 本地狀態即時更新移除
+      setExamSessions((prev) => prev.filter((s) => s.sessionId !== session.sessionId));
+      if (selectedSession?.sessionId === session.sessionId) {
+        setSelectedSession(null);
+      }
+    } catch (err: any) {
+      alert('刪除失敗，請稍候再試！');
     }
   }
 
@@ -531,7 +559,6 @@ export default function Home() {
                     </span>
                   </div>
 
-                  {/* 題組共用文章情境 (Context) */}
                   {currentQ.context && (
                     <div
                       style={{
@@ -563,7 +590,7 @@ export default function Home() {
                     {currentQ.question}
                   </p>
 
-                  {/* 選項清單（強制黑色字體） */}
+                  {/* 選項清單 */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
                     {Object.entries(currentQ.options || {}).map(([key, val]: any) => {
                       const selected = userSelections[currentIndex] === key;
@@ -595,7 +622,7 @@ export default function Home() {
                             borderRadius: '14px',
                             border: `1.5px solid ${itemBorder}`,
                             backgroundColor: itemBg,
-                            color: '#0f172a', // 強制文字黑色，防止手機預設藍色
+                            color: '#0f172a',
                             cursor: isSubmitted ? 'default' : 'pointer',
                             display: 'flex',
                             alignItems: 'center',
@@ -624,7 +651,7 @@ export default function Home() {
                           <span
                             style={{
                               flex: 1,
-                              color: '#0f172a', // 強制內層文字黑色
+                              color: '#0f172a',
                               fontWeight: selected ? '600' : '400',
                             }}
                           >
@@ -745,7 +772,7 @@ export default function Home() {
           )
         )}
 
-        {/* 歷史作答紀錄彈窗 */}
+        {/* 歷史作答紀錄彈窗（含刪除紀錄按鈕） */}
         {showHistoryModal && (
           <div
             style={{
@@ -850,9 +877,10 @@ export default function Home() {
                             justifyContent: 'space-between',
                             alignItems: 'center',
                             cursor: 'pointer',
+                            gap: '12px',
                           }}
                         >
-                          <div>
+                          <div style={{ flex: 1 }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2px' }}>
                               <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#0f172a' }}>
                                 {session.dateStr}
@@ -874,19 +902,43 @@ export default function Home() {
                               共 {session.total} 題 · 點擊查看題目光碟 🔍
                             </span>
                           </div>
-                          <div style={{ textAlign: 'right' }}>
-                            <div style={{ fontSize: '15px', fontWeight: '900', color: '#f43f5e' }}>
-                              {session.correct} / {session.total} 題
+
+                          {/* 成績與刪除按鈕區塊 */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                            <div style={{ textAlign: 'right' }}>
+                              <div style={{ fontSize: '15px', fontWeight: '900', color: '#f43f5e' }}>
+                                {session.correct} / {session.total} 題
+                              </div>
+                              <span
+                                style={{
+                                  fontSize: '12px',
+                                  fontWeight: 'bold',
+                                  color: session.accuracy >= 70 ? '#059669' : '#e11d48',
+                                }}
+                              >
+                                答對率 {session.accuracy}%
+                              </span>
                             </div>
-                            <span
+
+                            {/* 刪除紀錄按鈕 */}
+                            <button
+                              type="button"
+                              onClick={(e) => handleDeleteSession(e, session)}
+                              title="刪除此筆紀錄"
                               style={{
+                                padding: '6px 10px',
+                                backgroundColor: '#ffffff',
+                                border: '1px solid #fecdd3',
+                                color: '#e11d48',
+                                borderRadius: '10px',
                                 fontSize: '12px',
                                 fontWeight: 'bold',
-                                color: session.accuracy >= 70 ? '#059669' : '#e11d48',
+                                cursor: 'pointer',
+                                transition: 'all 0.15s ease',
                               }}
                             >
-                              答對率 {session.accuracy}%
-                            </span>
+                              🗑️ 刪除
+                            </button>
                           </div>
                         </div>
                       ))}
@@ -908,7 +960,22 @@ export default function Home() {
                       <span style={{ fontSize: '13px', fontWeight: '600', color: '#0f172a' }}>
                         成績：{selectedSession.correct} / {selectedSession.total} ({selectedSession.accuracy}%)
                       </span>
-                      <span style={{ fontSize: '12px', color: '#94a3b8' }}>{selectedSession.part}</span>
+                      <button
+                        type="button"
+                        onClick={(e) => handleDeleteSession(e, selectedSession)}
+                        style={{
+                          padding: '4px 10px',
+                          backgroundColor: '#fff1f2',
+                          border: '1px solid #fecdd3',
+                          color: '#e11d48',
+                          borderRadius: '8px',
+                          fontSize: '11px',
+                          fontWeight: 'bold',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        🗑️ 刪除此場紀錄
+                      </button>
                     </div>
 
                     {selectedSession.items.map((item, idx) => (
