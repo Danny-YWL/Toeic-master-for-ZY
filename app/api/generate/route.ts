@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '../../supabaseClient';
 
-// 設定 Vercel 雲端執行最長允許時間為 60 秒，徹底解決超時問題
 export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
 
@@ -48,7 +47,6 @@ export async function POST(req: Request) {
   }
 ]`;
     } else {
-      // Part 7 題組
       systemInstruction = '你是一位專業的多益考官。請出一個標準的 Part 7 單篇閱讀題組（1篇文章搭配3題單選）。輸出必須是標準 JSON Array。';
       prompt = `請設計 1 篇多益【Part 7 閱讀理解】短篇題組，文章長度約 90-130 字（商務 Memo、短 Email 或產品活動公告），並針對文章出 3 題單選題。
 輸出 3 個題目的 JSON Array，每個題目的 context 欄位放同一篇完整文章：
@@ -68,7 +66,6 @@ export async function POST(req: Request) {
 
     let parsedQuestions: any[] = [];
 
-    // 優先使用 OpenAI (若有提供)
     if (openAiKey) {
       const response = await fetch('https://api.openai.com/v1/chat/completions', {
         method: 'POST',
@@ -91,8 +88,8 @@ export async function POST(req: Request) {
       const jsonRes = JSON.parse(cleaned);
       parsedQuestions = Array.isArray(jsonRes) ? jsonRes : jsonRes.questions || Object.values(jsonRes)[0];
     } else if (geminiKey) {
-      // 使用 Gemini 極速 Flash 模型
-      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiKey}`;
+      // 使用正確支援的 gemini-2.0-flash 模型
+      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`;
       const response = await fetch(geminiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -123,7 +120,6 @@ export async function POST(req: Request) {
       throw new Error('生成的題目格式不正確');
     }
 
-    // 存入題庫資料庫
     const records = parsedQuestions.map((q: any) => ({
       part: q.part || part,
       topic: q.topic || '閱讀測驗',
@@ -142,7 +138,6 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ data: insertedData && insertedData.length > 0 ? insertedData : records });
   } catch (error: any) {
-    console.error('出題錯誤細節:', error);
     return NextResponse.json({ error: error.message || '出題失敗' }, { status: 500 });
   }
 }
