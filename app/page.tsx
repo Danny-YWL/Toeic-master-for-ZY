@@ -3,12 +3,19 @@
 import { useState, useEffect } from 'react';
 import { supabase } from './supabaseClient';
 
-const CHEER_MESSAGES = [
+const CHEER_MESSAGES_BAOBAO = [
   '寶寶最棒了，慢慢寫不著急～ 🌸',
   '熊咘咘在旁邊幫妳加油打氣喔 🧸',
   '今天也離金色證書更近一步了 ✨',
   '認真的寶寶超級迷人 💖',
   '答錯也沒關係，把解析看懂就是賺到！ 🍀',
+];
+
+const CHEER_MESSAGES_BEAR = [
+  '熊熊衝刺！跟寶寶一起拿下金色證書 🐻🔥',
+  '今天也要展現帥氣實力，穩穩拿分！ 🎯',
+  '專注破題，多益 850+ 勢在必得 ✨',
+  '錯題就是養分，徹底弄懂就無敵了！ 🚀',
 ];
 
 interface ExamSession {
@@ -18,18 +25,22 @@ interface ExamSession {
   total: number;
   correct: number;
   accuracy: number;
+  userName: string;
   recordIds: number[];
   items: any[];
 }
 
 export default function Home() {
+  // 身分切換：寶寶 / 熊熊
+  const [currentUser, setCurrentUser] = useState<'寶寶' | '熊熊'>('寶寶');
+
   const [questions, setQuestions] = useState<any[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [userSelections, setUserSelections] = useState<Record<number, string>>({});
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingText, setLoadingText] = useState('');
-  const [cheerMsg, setCheerMsg] = useState(CHEER_MESSAGES[0]);
+  const [cheerMsg, setCheerMsg] = useState(CHEER_MESSAGES_BAOBAO[0]);
   const [selectedPart, setSelectedPart] = useState<'Part 5' | 'Part 6' | 'Part 7' | 'Mock 50'>('Part 5');
 
   // 歷史紀錄相關狀態
@@ -39,17 +50,18 @@ export default function Home() {
   const [loadingHistory, setLoadingHistory] = useState(false);
 
   useEffect(() => {
-    const randomMsg = CHEER_MESSAGES[Math.floor(Math.random() * CHEER_MESSAGES.length)];
+    const list = currentUser === '寶寶' ? CHEER_MESSAGES_BAOBAO : CHEER_MESSAGES_BEAR;
+    const randomMsg = list[Math.floor(Math.random() * list.length)];
     setCheerMsg(randomMsg);
-  }, [currentIndex, isSubmitted]);
+  }, [currentIndex, isSubmitted, currentUser]);
 
-  // 從題庫抽取（支援各 Part 與 50 題多益比例小模考，0秒載入）
+  // 從題庫抽取（支援各 Part 與 50 題多益比例小模考）
   async function handleReviewFromBank(partToFilter: 'Part 5' | 'Part 6' | 'Part 7' | 'Mock 50' = selectedPart) {
     setLoading(true);
     if (partToFilter === 'Mock 50') {
-      setLoadingText('熊咘咘正在組裝【50 題多益比重全真小模擬考】... 🎯🐾');
+      setLoadingText(`正在為【${currentUser}】組裝【50 題多益比重全真小模考】... 🎯🐾`);
     } else {
-      setLoadingText(`熊咘咘正在挑選【${partToFilter}】題目... 🐾`);
+      setLoadingText(`正在為【${currentUser}】挑選【${partToFilter}】題目... 🐾`);
     }
 
     try {
@@ -164,7 +176,7 @@ export default function Home() {
   async function handleSubmitQuiz() {
     const unansweredCount = questions.length - Object.keys(userSelections).length;
     if (unansweredCount > 0) {
-      const confirmSubmit = window.confirm(`寶寶還有 ${unansweredCount} 題沒寫完喔，確定現在交卷嗎？`);
+      const confirmSubmit = window.confirm(`${currentUser}還有 ${unansweredCount} 題沒寫完喔，確定現在交卷嗎？`);
       if (!confirmSubmit) return;
     }
 
@@ -175,12 +187,13 @@ export default function Home() {
       question_id: q.id,
       selected_option: userSelections[idx] || '未作答',
       is_correct: userSelections[idx] === q.answer,
+      user_name: currentUser, // 寫入當前作答者
       created_at: nowIso,
     }));
     await supabase.from('user_answers').insert(records);
   }
 
-  // 讀取歷次紀錄
+  // 讀取當前使用者的歷次紀錄
   async function fetchHistory() {
     setLoadingHistory(true);
     setSelectedSession(null);
@@ -192,6 +205,7 @@ export default function Home() {
           id,
           selected_option,
           is_correct,
+          user_name,
           created_at,
           questions (
             question,
@@ -201,6 +215,7 @@ export default function Home() {
             explanation
           )
         `)
+        .eq('user_name', currentUser) // 依據使用者過濾
         .order('created_at', { ascending: false })
         .limit(300);
 
@@ -253,6 +268,7 @@ export default function Home() {
           total,
           correct,
           accuracy,
+          userName: first.user_name || currentUser,
           recordIds,
           items: grp,
         };
@@ -303,11 +319,12 @@ export default function Home() {
   return (
     <main
       style={{
-        backgroundColor: '#fff1f2',
+        backgroundColor: currentUser === '寶寶' ? '#fff1f2' : '#f0fdf4',
         minHeight: '100vh',
         padding: '24px 12px',
         fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
         WebkitTapHighlightColor: 'transparent',
+        transition: 'background-color 0.3s ease',
       }}
     >
       <div style={{ maxWidth: '1024px', margin: '0 auto' }}>
@@ -317,7 +334,7 @@ export default function Home() {
             backgroundColor: '#ffffff',
             borderRadius: '24px',
             padding: '20px',
-            border: '1px solid #ffe4e6',
+            border: currentUser === '寶寶' ? '1px solid #ffe4e6' : '1px solid #bbf7d0',
             boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
             marginBottom: '16px',
             display: 'flex',
@@ -328,49 +345,113 @@ export default function Home() {
           }}
         >
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '24px' }}>🧸</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '24px' }}>{currentUser === '寶寶' ? '🧸' : '🐻'}</span>
               <h1 style={{ fontSize: '20px', fontWeight: '900', color: '#1e293b', margin: 0 }}>
-                寶寶的多益全方位特訓室
+                {currentUser === '寶寶' ? '寶寶' : '熊熊'}的多益全方位特訓室
               </h1>
+
+              {/* 使用者身分切換器 */}
+              <div
+                style={{
+                  display: 'inline-flex',
+                  backgroundColor: '#f1f5f9',
+                  borderRadius: '14px',
+                  padding: '3px',
+                  marginLeft: '8px',
+                  border: '1px solid #e2e8f0',
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => setCurrentUser('寶寶')}
+                  style={{
+                    padding: '4px 12px',
+                    borderRadius: '10px',
+                    fontSize: '12px',
+                    fontWeight: 'bold',
+                    border: 'none',
+                    cursor: 'pointer',
+                    backgroundColor: currentUser === '寶寶' ? '#f43f5e' : 'transparent',
+                    color: currentUser === '寶寶' ? '#ffffff' : '#64748b',
+                    boxShadow: currentUser === '寶寶' ? '0 2px 4px rgba(244,63,94,0.3)' : 'none',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  🧸 寶寶
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCurrentUser('熊熊')}
+                  style={{
+                    padding: '4px 12px',
+                    borderRadius: '10px',
+                    fontSize: '12px',
+                    fontWeight: 'bold',
+                    border: 'none',
+                    cursor: 'pointer',
+                    backgroundColor: currentUser === '熊熊' ? '#059669' : 'transparent',
+                    color: currentUser === '熊熊' ? '#ffffff' : '#64748b',
+                    boxShadow: currentUser === '熊熊' ? '0 2px 4px rgba(5,150,105,0.3)' : 'none',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  🐻 熊熊
+                </button>
+              </div>
             </div>
-            <p style={{ fontSize: '13px', color: '#f43f5e', fontWeight: '500', marginTop: '6px', marginBottom: 0 }}>
+            <p
+              style={{
+                fontSize: '13px',
+                color: currentUser === '寶寶' ? '#f43f5e' : '#059669',
+                fontWeight: '500',
+                marginTop: '6px',
+                marginBottom: 0,
+              }}
+            >
               💌 {cheerMsg}
             </p>
           </div>
 
           {/* 題型切換 */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-            {(['Part 5', 'Part 6', 'Part 7', 'Mock 50'] as const).map((part) => (
-              <button
-                key={part}
-                onClick={() => {
-                  setSelectedPart(part);
-                  handleReviewFromBank(part);
-                }}
-                style={{
-                  padding: '8px 12px',
-                  borderRadius: '12px',
-                  fontSize: '12px',
-                  fontWeight: 'bold',
-                  cursor: 'pointer',
-                  border: selectedPart === part ? '2px solid #f43f5e' : '1px solid #e2e8f0',
-                  backgroundColor: selectedPart === part ? '#ffe4e6' : '#ffffff',
-                  color: selectedPart === part ? '#e11d48' : '#475569',
-                }}
-              >
-                {part === 'Part 5'
-                  ? 'Part 5 單句'
-                  : part === 'Part 6'
-                  ? 'Part 6 段落'
-                  : part === 'Part 7'
-                  ? 'Part 7 閱讀'
-                  : '🎯 小模擬考 (50題)'}
-              </button>
-            ))}
+            {(['Part 5', 'Part 6', 'Part 7', 'Mock 50'] as const).map((part) => {
+              const isSelected = selectedPart === part;
+              const activeBg = currentUser === '寶寶' ? '#ffe4e6' : '#dcfce7';
+              const activeBorder = currentUser === '寶寶' ? '#f43f5e' : '#10b981';
+              const activeColor = currentUser === '寶寶' ? '#e11d48' : '#047857';
+
+              return (
+                <button
+                  key={part}
+                  onClick={() => {
+                    setSelectedPart(part);
+                    handleReviewFromBank(part);
+                  }}
+                  style={{
+                    padding: '8px 12px',
+                    borderRadius: '12px',
+                    fontSize: '12px',
+                    fontWeight: 'bold',
+                    cursor: 'pointer',
+                    border: isSelected ? `2px solid ${activeBorder}` : '1px solid #e2e8f0',
+                    backgroundColor: isSelected ? activeBg : '#ffffff',
+                    color: isSelected ? activeColor : '#475569',
+                  }}
+                >
+                  {part === 'Part 5'
+                    ? 'Part 5 單句'
+                    : part === 'Part 6'
+                    ? 'Part 6 段落'
+                    : part === 'Part 7'
+                    ? 'Part 7 閱讀'
+                    : '🎯 小模擬考 (50題)'}
+                </button>
+              );
+            })}
           </div>
 
-          {/* 頂部操作按鈕（僅保留 歷次紀錄 與 隨機換題） */}
+          {/* 頂部操作按鈕 */}
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             <button
               onClick={fetchHistory}
@@ -385,14 +466,14 @@ export default function Home() {
                 cursor: 'pointer',
               }}
             >
-              📊 歷次紀錄
+              📊 {currentUser}的紀錄
             </button>
             <button
               onClick={() => handleReviewFromBank(selectedPart)}
               disabled={loading}
               style={{
                 padding: '10px 16px',
-                backgroundColor: '#f43f5e',
+                backgroundColor: currentUser === '寶寶' ? '#f43f5e' : '#059669',
                 color: '#ffffff',
                 fontSize: '13px',
                 fontWeight: 'bold',
@@ -400,7 +481,7 @@ export default function Home() {
                 border: 'none',
                 cursor: loading ? 'not-allowed' : 'pointer',
                 opacity: loading ? 0.6 : 1,
-                boxShadow: '0 4px 10px rgba(244, 63, 94, 0.25)',
+                boxShadow: currentUser === '寶寶' ? '0 4px 10px rgba(244, 63, 94, 0.25)' : '0 4px 10px rgba(5, 150, 105, 0.25)',
               }}
             >
               🎲 隨機換一組題
@@ -414,12 +495,12 @@ export default function Home() {
               padding: '14px',
               marginBottom: '16px',
               backgroundColor: '#ffffff',
-              border: '1px solid #fecdd3',
+              border: currentUser === '寶寶' ? '1px solid #fecdd3' : '1px solid #a7f3d0',
               borderRadius: '20px',
               textAlign: 'center',
               fontSize: '14px',
               fontWeight: 'bold',
-              color: '#f43f5e',
+              color: currentUser === '寶寶' ? '#f43f5e' : '#059669',
             }}
           >
             {loadingText}
@@ -436,7 +517,7 @@ export default function Home() {
                 backgroundColor: '#ffffff',
                 borderRadius: '20px',
                 padding: '18px',
-                border: '1px solid #ffe4e6',
+                border: currentUser === '寶寶' ? '1px solid #ffe4e6' : '1px solid #bbf7d0',
                 boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
                 height: 'fit-content',
               }}
@@ -444,14 +525,14 @@ export default function Home() {
               <div style={{ marginBottom: '14px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
                   <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#94a3b8' }}>本組進度</span>
-                  <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#f43f5e' }}>
+                  <span style={{ fontSize: '12px', fontWeight: 'bold', color: currentUser === '寶寶' ? '#f43f5e' : '#059669' }}>
                     {answeredCount} / {totalQuestions}
                   </span>
                 </div>
                 <div style={{ width: '100%', backgroundColor: '#f1f5f9', height: '6px', borderRadius: '9999px', overflow: 'hidden' }}>
                   <div
                     style={{
-                      backgroundColor: '#fb7185',
+                      backgroundColor: currentUser === '寶寶' ? '#fb7185' : '#34d399',
                       height: '100%',
                       width: `${progressPercent}%`,
                       transition: 'width 0.3s ease',
@@ -460,7 +541,7 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* 題號按鈕格（已作答柔和綠、當前題深黑加粗外框） */}
+              {/* 題號按鈕格 */}
               <div
                 style={{
                   display: 'grid',
@@ -542,7 +623,7 @@ export default function Home() {
                             position: 'absolute',
                             top: '-5px',
                             right: '-5px',
-                            backgroundColor: '#f43f5e',
+                            backgroundColor: currentUser === '寶寶' ? '#f43f5e' : '#059669',
                             color: '#ffffff',
                             fontWeight: 'bold',
                             boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
@@ -562,21 +643,23 @@ export default function Home() {
                   style={{
                     width: '100%',
                     padding: '12px',
-                    backgroundColor: '#f43f5e',
+                    backgroundColor: currentUser === '寶寶' ? '#f43f5e' : '#059669',
                     color: '#ffffff',
                     fontSize: '13px',
                     fontWeight: 'bold',
                     borderRadius: '14px',
                     border: 'none',
                     cursor: 'pointer',
-                    boxShadow: '0 4px 10px rgba(244, 63, 94, 0.3)',
+                    boxShadow: currentUser === '寶寶' ? '0 4px 10px rgba(244, 63, 94, 0.3)' : '0 4px 10px rgba(5, 150, 105, 0.3)',
                   }}
                 >
                   📝 寫完了，交卷對答案！
                 </button>
               ) : (
                 <div style={{ textAlign: 'center', padding: '6px 0' }}>
-                  <span style={{ fontSize: '24px', fontWeight: '900', color: '#f43f5e' }}>{correctCount}</span>
+                  <span style={{ fontSize: '24px', fontWeight: '900', color: currentUser === '寶寶' ? '#f43f5e' : '#059669' }}>
+                    {correctCount}
+                  </span>
                   <span style={{ color: '#94a3b8' }}> / {totalQuestions}</span>
                   <p style={{ fontSize: '12px', color: '#64748b', margin: '4px 0 0 0' }}>
                     {correctCount === totalQuestions ? '🎉 滿分太神啦！' : '很棒！解析弄懂實力再躍進！'}
@@ -593,7 +676,7 @@ export default function Home() {
                     backgroundColor: '#ffffff',
                     borderRadius: '24px',
                     padding: '24px',
-                    border: '1px solid #ffe4e6',
+                    border: currentUser === '寶寶' ? '1px solid #ffe4e6' : '1px solid #bbf7d0',
                     boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
                   }}
                 >
@@ -601,12 +684,12 @@ export default function Home() {
                     <span
                       style={{
                         padding: '4px 10px',
-                        backgroundColor: '#fff1f2',
-                        color: '#e11d48',
+                        backgroundColor: currentUser === '寶寶' ? '#fff1f2' : '#f0fdf4',
+                        color: currentUser === '寶寶' ? '#e11d48' : '#047857',
                         fontSize: '12px',
                         fontWeight: 'bold',
                         borderRadius: '9999px',
-                        border: '1px solid #ffe4e6',
+                        border: currentUser === '寶寶' ? '1px solid #ffe4e6' : '1px solid #bbf7d0',
                       }}
                     >
                       {currentQ.part} · {currentQ.topic || '題組'}
@@ -655,8 +738,8 @@ export default function Home() {
                       let itemBorder = '#e2e8f0';
 
                       if (!isSubmitted && selected) {
-                        itemBg = '#fff1f2';
-                        itemBorder = '#fb7185';
+                        itemBg = currentUser === '寶寶' ? '#fff1f2' : '#f0fdf4';
+                        itemBorder = currentUser === '寶寶' ? '#fb7185' : '#34d399';
                       } else if (isSubmitted) {
                         if (key === currentQ.answer) {
                           itemBg = '#ecfdf5';
@@ -698,7 +781,7 @@ export default function Home() {
                               justifyContent: 'center',
                               fontSize: '13px',
                               fontWeight: 'bold',
-                              backgroundColor: selected ? '#f43f5e' : '#f1f5f9',
+                              backgroundColor: selected ? (currentUser === '寶寶' ? '#f43f5e' : '#059669') : '#f1f5f9',
                               color: selected ? '#ffffff' : '#0f172a',
                               flexShrink: 0,
                             }}
@@ -771,9 +854,9 @@ export default function Home() {
                       style={{
                         marginTop: '18px',
                         padding: '16px',
-                        backgroundColor: '#fff1f2',
+                        backgroundColor: currentUser === '寶寶' ? '#fff1f2' : '#f0fdf4',
                         borderRadius: '14px',
-                        border: '1px solid #ffe4e6',
+                        border: currentUser === '寶寶' ? '1px solid #ffe4e6' : '1px solid #bbf7d0',
                       }}
                     >
                       <div style={{ marginBottom: '8px' }}>
@@ -784,8 +867,8 @@ export default function Home() {
                           {currentQ.translation}
                         </p>
                       </div>
-                      <div style={{ paddingTop: '8px', borderTop: '1px solid #ffe4e6' }}>
-                        <h4 style={{ fontSize: '12px', fontWeight: 'bold', color: '#f43f5e', margin: '0 0 4px 0' }}>
+                      <div style={{ paddingTop: '8px', borderTop: currentUser === '寶寶' ? '1px solid #ffe4e6' : '1px solid #bbf7d0' }}>
+                        <h4 style={{ fontSize: '12px', fontWeight: 'bold', color: currentUser === '寶寶' ? '#f43f5e' : '#059669', margin: '0 0 4px 0' }}>
                           考點詳解
                         </h4>
                         <p style={{ fontSize: '14px', color: '#0f172a', margin: 0, lineHeight: '1.6' }}>
@@ -806,7 +889,7 @@ export default function Home() {
                 padding: '60px 20px',
                 backgroundColor: '#ffffff',
                 borderRadius: '24px',
-                border: '2px dashed #fecdd3',
+                border: '2px dashed #cbd5e1',
               }}
             >
               <p style={{ color: '#64748b', marginBottom: '14px' }}>目前沒有題組喔！</p>
@@ -814,7 +897,7 @@ export default function Home() {
           )
         )}
 
-        {/* 歷史作答紀錄彈窗 */}
+        {/* 歷史作答紀錄彈窗（依據使用者隔離） */}
         {showHistoryModal && (
           <div
             style={{
@@ -842,7 +925,7 @@ export default function Home() {
                 display: 'flex',
                 flexDirection: 'column',
                 boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
-                border: '1px solid #ffe4e6',
+                border: '1px solid #cbd5e1',
                 overflow: 'hidden',
               }}
             >
@@ -874,7 +957,7 @@ export default function Home() {
                     </button>
                   )}
                   <h3 style={{ fontSize: '17px', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>
-                    {selectedSession ? `📝 ${selectedSession.dateStr} 作答詳情` : '📊 寶寶的歷次考試紀錄'}
+                    {selectedSession ? `📝 ${selectedSession.dateStr} 作答詳情` : `📊 ${currentUser}的歷次考試紀錄`}
                   </h3>
                 </div>
                 <button
@@ -896,13 +979,13 @@ export default function Home() {
 
               <div style={{ padding: '16px 20px', overflowY: 'auto', flex: 1 }}>
                 {loadingHistory ? (
-                  <div style={{ textAlign: 'center', padding: '40px 0', color: '#f43f5e', fontWeight: 'bold' }}>
-                    熊咘咘整理紀錄中... 🐾
+                  <div style={{ textAlign: 'center', padding: '40px 0', color: currentUser === '寶寶' ? '#f43f5e' : '#059669', fontWeight: 'bold' }}>
+                    整理【{currentUser}】的紀錄中... 🐾
                   </div>
                 ) : !selectedSession ? (
                   examSessions.length === 0 ? (
                     <div style={{ textAlign: 'center', padding: '40px 0', color: '#94a3b8' }}>
-                      目前還沒有考試紀錄喔，去寫一組試試吧！✨
+                      【{currentUser}】目前還沒有考試紀錄喔，去寫一組試試吧！✨
                     </div>
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -913,8 +996,8 @@ export default function Home() {
                           style={{
                             padding: '14px 18px',
                             borderRadius: '14px',
-                            border: '1px solid #ffe4e6',
-                            backgroundColor: '#fff1f2',
+                            border: currentUser === '寶寶' ? '1px solid #ffe4e6' : '1px solid #bbf7d0',
+                            backgroundColor: currentUser === '寶寶' ? '#fff1f2' : '#f0fdf4',
                             display: 'flex',
                             justifyContent: 'space-between',
                             alignItems: 'center',
@@ -933,8 +1016,8 @@ export default function Home() {
                                   fontWeight: 'bold',
                                   padding: '2px 8px',
                                   borderRadius: '9999px',
-                                  backgroundColor: '#ffe4e6',
-                                  color: '#e11d48',
+                                  backgroundColor: currentUser === '寶寶' ? '#ffe4e6' : '#dcfce7',
+                                  color: currentUser === '寶寶' ? '#e11d48' : '#047857',
                                 }}
                               >
                                 {session.part}
@@ -947,7 +1030,7 @@ export default function Home() {
 
                           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
                             <div style={{ textAlign: 'right' }}>
-                              <div style={{ fontSize: '15px', fontWeight: '900', color: '#f43f5e' }}>
+                              <div style={{ fontSize: '15px', fontWeight: '900', color: currentUser === '寶寶' ? '#f43f5e' : '#059669' }}>
                                 {session.correct} / {session.total} 題
                               </div>
                               <span
@@ -968,7 +1051,7 @@ export default function Home() {
                               style={{
                                 padding: '6px 10px',
                                 backgroundColor: '#ffffff',
-                                border: '1px solid #fecdd3',
+                                border: '1px solid #cbd5e1',
                                 color: '#e11d48',
                                 borderRadius: '10px',
                                 fontSize: '12px',
@@ -997,14 +1080,14 @@ export default function Home() {
                       }}
                     >
                       <span style={{ fontSize: '13px', fontWeight: '600', color: '#0f172a' }}>
-                        成績：{selectedSession.correct} / {selectedSession.total} ({selectedSession.accuracy}%)
+                        作答者：{currentUser} | 成績：{selectedSession.correct} / {selectedSession.total} ({selectedSession.accuracy}%)
                       </span>
                       <button
                         type="button"
                         onClick={(e) => handleDeleteSession(e, selectedSession)}
                         style={{
                           padding: '4px 10px',
-                          backgroundColor: '#fff1f2',
+                          backgroundColor: '#ffffff',
                           border: '1px solid #fecdd3',
                           color: '#e11d48',
                           borderRadius: '8px',
@@ -1075,7 +1158,7 @@ export default function Home() {
                                 } else if (isUserPick && !isCorrect) {
                                   optBg = '#fff1f2';
                                   optBorder = '#fb7185';
-                                  tagText = '✕ 寶寶選這個';
+                                  tagText = `✕ ${currentUser}選這個`;
                                   tagBg = '#f43f5e';
                                   tagColor = '#ffffff';
                                 }
