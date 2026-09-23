@@ -43,7 +43,7 @@ export default function Home() {
     setCheerMsg(randomMsg);
   }, [currentIndex, isSubmitted]);
 
-  // 從題庫抽取
+  // 從題庫抽取（已修復：真隨機挑選題組與題目）
   async function handleReviewFromBank(partToFilter = selectedPart) {
     setLoading(true);
     setLoadingText(`熊咘咘正在翻【${partToFilter}】題庫... 🐾`);
@@ -51,22 +51,43 @@ export default function Home() {
       const { data, error } = await supabase
         .from('questions')
         .select('*')
-        .eq('part', partToFilter)
-        .order('created_at', { ascending: false })
-        .limit(30);
+        .eq('part', partToFilter);
 
       if (error) throw error;
 
-      if (data && data.length > 0) {
-        const limitCount = partToFilter === 'Part 5' ? 5 : partToFilter === 'Part 6' ? 4 : 3;
-        const picked = data.slice(0, limitCount);
-        setQuestions(picked);
-        setCurrentIndex(0);
-        setUserSelections({});
-        setIsSubmitted(false);
-      } else {
+      if (!data || data.length === 0) {
         alert(`${partToFilter} 題庫目前還是空的，先請熊咘咘出新題目吧！ 🧸`);
+        setLoading(false);
+        return;
       }
+
+      let selectedQuestions: any[] = [];
+
+      if (partToFilter === 'Part 5') {
+        // Part 5：真正隨機打亂並取 5 題
+        const shuffled = [...data].sort(() => 0.5 - Math.random());
+        selectedQuestions = shuffled.slice(0, 5);
+      } else {
+        // Part 6 或 Part 7：按 context (文章) 分組，隨機挑選「其中一整組題組」
+        const contextMap = new Map<string, any[]>();
+        data.forEach((q) => {
+          const key = q.context || 'general';
+          if (!contextMap.has(key)) {
+            contextMap.set(key, []);
+          }
+          contextMap.get(key)!.push(q);
+        });
+
+        const allArticles = Array.from(contextMap.values());
+        // 隨機抽出一篇完整文章的題目
+        const randomArticle = allArticles[Math.floor(Math.random() * allArticles.length)];
+        selectedQuestions = randomArticle || [];
+      }
+
+      setQuestions(selectedQuestions);
+      setCurrentIndex(0);
+      setUserSelections({});
+      setIsSubmitted(false);
     } catch (e: any) {
       alert('翻題庫有點卡卡，再試一次看看～');
     } finally {
@@ -226,7 +247,7 @@ export default function Home() {
 
   // 刪除單場次紀錄功能
   async function handleDeleteSession(e: React.MouseEvent, session: ExamSession) {
-    e.stopPropagation(); // 防止點擊刪除時觸發展開
+    e.stopPropagation();
     const confirmDelete = window.confirm(`確定要刪除 ${session.dateStr}（${session.part}）的作答紀錄嗎？`);
     if (!confirmDelete) return;
 
@@ -238,7 +259,6 @@ export default function Home() {
 
       if (error) throw error;
 
-      // 本地狀態即時更新移除
       setExamSessions((prev) => prev.filter((s) => s.sessionId !== session.sessionId));
       if (selectedSession?.sessionId === session.sessionId) {
         setSelectedSession(null);
@@ -772,7 +792,7 @@ export default function Home() {
           )
         )}
 
-        {/* 歷史作答紀錄彈窗（含刪除紀錄按鈕） */}
+        {/* 歷史作答紀錄彈窗 */}
         {showHistoryModal && (
           <div
             style={{
@@ -903,7 +923,6 @@ export default function Home() {
                             </span>
                           </div>
 
-                          {/* 成績與刪除按鈕區塊 */}
                           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
                             <div style={{ textAlign: 'right' }}>
                               <div style={{ fontSize: '15px', fontWeight: '900', color: '#f43f5e' }}>
@@ -920,7 +939,6 @@ export default function Home() {
                               </span>
                             </div>
 
-                            {/* 刪除紀錄按鈕 */}
                             <button
                               type="button"
                               onClick={(e) => handleDeleteSession(e, session)}
@@ -934,7 +952,6 @@ export default function Home() {
                                 fontSize: '12px',
                                 fontWeight: 'bold',
                                 cursor: 'pointer',
-                                transition: 'all 0.15s ease',
                               }}
                             >
                               🗑️ 刪除
