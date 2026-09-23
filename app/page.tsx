@@ -11,6 +11,16 @@ const CHEER_MESSAGES = [
   '答錯也沒關係，把解析看懂就是賺到！ 🍀',
 ];
 
+interface ExamSession {
+  sessionId: string;
+  dateStr: string;
+  part: string;
+  total: number;
+  correct: number;
+  accuracy: number;
+  items: any[];
+}
+
 export default function Home() {
   const [questions, setQuestions] = useState<any[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -23,7 +33,8 @@ export default function Home() {
 
   // 歷史紀錄相關狀態
   const [showHistoryModal, setShowHistoryModal] = useState(false);
-  const [historyRecords, setHistoryRecords] = useState<any[]>([]);
+  const [examSessions, setExamSessions] = useState<ExamSession[]>([]);
+  const [selectedSession, setSelectedSession] = useState<ExamSession | null>(null);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
   useEffect(() => {
@@ -31,9 +42,10 @@ export default function Home() {
     setCheerMsg(randomMsg);
   }, [currentIndex, isSubmitted]);
 
+  // 從題庫抽取
   async function handleReviewFromBank(partToFilter = selectedPart) {
     setLoading(true);
-    setLoadingText(`熊咘咘正在翻【${partToFilter}】題庫挑 5 題精選題目... 🐾`);
+    setLoadingText(`熊咘咘正在翻【${partToFilter}】題庫... 🐾`);
     try {
       const { data, error } = await supabase
         .from('questions')
@@ -45,13 +57,14 @@ export default function Home() {
       if (error) throw error;
 
       if (data && data.length > 0) {
-        const shuffled = [...data].sort(() => 0.5 - Math.random()).slice(0, 5);
-        setQuestions(shuffled);
+        const limitCount = partToFilter === 'Part 5' ? 5 : partToFilter === 'Part 6' ? 4 : 3;
+        const picked = data.slice(0, limitCount);
+        setQuestions(picked);
         setCurrentIndex(0);
         setUserSelections({});
         setIsSubmitted(false);
       } else {
-        alert(`${partToFilter} 題庫目前還是空的，先請熊咘咘出題目吧！ 🧸`);
+        alert(`${partToFilter} 題庫目前還是空的，先請熊咘咘出新題目吧！ 🧸`);
       }
     } catch (e: any) {
       alert('翻題庫有點卡卡，再試一次看看～');
@@ -60,28 +73,35 @@ export default function Home() {
     }
   }
 
+  // AI 出新題組
   async function handleGenerateNewSet() {
     setLoading(true);
-    setLoadingText(`熊咘咘正在極速生成 5 題【${selectedPart}】，請稍候 3~5 秒... 🧸⚡`);
+    const targetName =
+      selectedPart === 'Part 5'
+        ? '5 題單句填空'
+        : selectedPart === 'Part 6'
+        ? '1篇段落填空(4題)'
+        : '1篇閱讀理解(3題)';
+    setLoadingText(`熊咘咘正在極速生成【${targetName}】，請稍候 3~5 秒... 🧸⚡`);
 
     try {
       const res = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ part: selectedPart, count: 5 }),
+        body: JSON.stringify({ part: selectedPart }),
       });
 
-      if (!res.ok) throw new Error('生成失敗');
-
       const result = await res.json();
-      if (result.data && result.data.length > 0) {
-        setQuestions(result.data);
-        setCurrentIndex(0);
-        setUserSelections({});
-        setIsSubmitted(false);
+      if (!res.ok || !result.data || result.data.length === 0) {
+        throw new Error(result.error || '生成失敗');
       }
+
+      setQuestions(result.data);
+      setCurrentIndex(0);
+      setUserSelections({});
+      setIsSubmitted(false);
     } catch (e: any) {
-      alert('出題稍微卡了一下，請再點一次讓他重新出題！ 🐾');
+      alert(`出題遇到狀況（${e.message}），請再點一次試試看！ 🐾`);
     } finally {
       setLoading(false);
     }
@@ -108,17 +128,19 @@ export default function Home() {
 
     setIsSubmitted(true);
 
+    const nowIso = new Date().toISOString();
     const records = questions.map((q, idx) => ({
       question_id: q.id,
       selected_option: userSelections[idx] || '未作答',
       is_correct: userSelections[idx] === q.answer,
+      created_at: nowIso,
     }));
     await supabase.from('user_answers').insert(records);
   }
 
-  // 讀取歷史作答紀錄
   async function fetchHistory() {
     setLoadingHistory(true);
+    setSelectedSession(null);
     setShowHistoryModal(true);
     try {
       const { data, error } = await supabase
@@ -136,10 +158,61 @@ export default function Home() {
           )
         `)
         .order('created_at', { ascending: false })
-        .limit(50);
+        .limit(200);
 
       if (error) throw error;
-      setHistoryRecords(data || []);
+      if (!data || data.length === 0) {
+        setExamSessions([]);
+        return;
+      }
+
+      const groups: any[][] = [];
+      let currentGroup: any[] = [];
+      let lastTime = 0;
+
+      data.forEach((item) => {
+        const itemTime = item.created_at ? new Date(item.created_at).getTime() : 0;
+        if (currentGroup.length === 0) {
+          currentGroup.push(item);
+          lastTime = itemTime;
+        } else {
+          if (Math.abs(lastTime - itemTime) <= 5000) {
+            currentGroup.push(item);
+          } else {
+            groups.push(currentGroup);
+            currentGroup = [item];
+            lastTime = itemTime;
+          }
+        }
+      });
+      if (currentGroup.length > 0) groups.push(currentGroup);
+
+      const sessions: ExamSession[] = groups.map((grp, index) => {
+        const first = grp[0];
+        const dateObj = first.created_at ? new Date(first.created_at) : new Date();
+        const month = dateObj.getMonth() + 1;
+        const date = dateObj.getDate();
+        const hours = String(dateObj.getHours()).padStart(2, '0');
+        const minutes = String(dateObj.getMinutes()).padStart(2, '0');
+        const dateStr = `${month}/${date} ${hours}:${minutes}`;
+
+        const total = grp.length;
+        const correct = grp.filter((i) => i.is_correct).length;
+        const accuracy = Math.round((correct / total) * 100);
+        const part = first.questions?.part || 'Part 5';
+
+        return {
+          sessionId: `${first.created_at}-${index}`,
+          dateStr,
+          part,
+          total,
+          correct,
+          accuracy,
+          items: grp,
+        };
+      });
+
+      setExamSessions(sessions);
     } catch (err: any) {
       alert('讀取歷史紀錄失敗，請稍候再試～');
     } finally {
@@ -153,40 +226,37 @@ export default function Home() {
   const progressPercent = totalQuestions > 0 ? Math.round((answeredCount / totalQuestions) * 100) : 0;
   const correctCount = questions.filter((q, idx) => userSelections[idx] === q.answer).length;
 
-  const totalHistoryCount = historyRecords.length;
-  const totalHistoryCorrect = historyRecords.filter((r) => r.is_correct).length;
-  const historyAccuracy = totalHistoryCount > 0 ? Math.round((totalHistoryCorrect / totalHistoryCount) * 100) : 0;
-
   return (
     <main
       style={{
         backgroundColor: '#fff1f2',
         minHeight: '100vh',
-        padding: '32px 16px',
-        fontFamily: 'system-ui, -apple-system, sans-serif',
+        padding: '24px 12px',
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        WebkitTapHighlightColor: 'transparent',
       }}
     >
       <div style={{ maxWidth: '1024px', margin: '0 auto' }}>
-        {/* 可愛頂部導覽列 */}
+        {/* 頂部 Header */}
         <header
           style={{
             backgroundColor: '#ffffff',
             borderRadius: '24px',
-            padding: '24px',
+            padding: '20px',
             border: '1px solid #ffe4e6',
             boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
-            marginBottom: '20px',
+            marginBottom: '16px',
             display: 'flex',
             flexWrap: 'wrap',
             justifyContent: 'space-between',
             alignItems: 'center',
-            gap: '16px',
+            gap: '14px',
           }}
         >
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '26px' }}>🧸</span>
-              <h1 style={{ fontSize: '22px', fontWeight: '900', color: '#1e293b', margin: 0 }}>
+              <span style={{ fontSize: '24px' }}>🧸</span>
+              <h1 style={{ fontSize: '20px', fontWeight: '900', color: '#1e293b', margin: 0 }}>
                 寶寶的多益全方位特訓室
               </h1>
             </div>
@@ -195,8 +265,8 @@ export default function Home() {
             </p>
           </div>
 
-          {/* 題型切換按鈕組 */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          {/* 題型切換 */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
             {(['Part 5', 'Part 6', 'Part 7'] as const).map((part) => (
               <button
                 key={part}
@@ -205,14 +275,14 @@ export default function Home() {
                   handleReviewFromBank(part);
                 }}
                 style={{
-                  padding: '8px 14px',
-                  borderRadius: '14px',
+                  padding: '8px 12px',
+                  borderRadius: '12px',
                   fontSize: '12px',
                   fontWeight: 'bold',
                   cursor: 'pointer',
                   border: selectedPart === part ? '2px solid #f43f5e' : '1px solid #e2e8f0',
                   backgroundColor: selectedPart === part ? '#ffe4e6' : '#ffffff',
-                  color: selectedPart === part ? '#e11d48' : '#64748b',
+                  color: selectedPart === part ? '#e11d48' : '#475569',
                 }}
               >
                 {part === 'Part 5' ? 'Part 5 單句' : part === 'Part 6' ? 'Part 6 段落' : 'Part 7 閱讀'}
@@ -220,56 +290,56 @@ export default function Home() {
             ))}
           </div>
 
-          <div style={{ display: 'flex', gap: '10px' }}>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             <button
               onClick={fetchHistory}
               style={{
-                padding: '10px 14px',
+                padding: '9px 13px',
                 backgroundColor: '#f1f5f9',
-                color: '#334155',
-                fontSize: '13px',
+                color: '#1e293b',
+                fontSize: '12px',
                 fontWeight: 'bold',
-                borderRadius: '16px',
-                border: '1px solid #e2e8f0',
+                borderRadius: '14px',
+                border: '1px solid #cbd5e1',
                 cursor: 'pointer',
               }}
             >
-              📊 答題紀錄
+              📊 歷次紀錄
             </button>
             <button
               onClick={() => handleReviewFromBank(selectedPart)}
               disabled={loading}
               style={{
-                padding: '10px 16px',
+                padding: '9px 13px',
                 backgroundColor: '#1e293b',
                 color: '#ffffff',
-                fontSize: '13px',
+                fontSize: '12px',
                 fontWeight: 'bold',
-                borderRadius: '16px',
+                borderRadius: '14px',
                 border: 'none',
                 cursor: loading ? 'not-allowed' : 'pointer',
                 opacity: loading ? 0.6 : 1,
               }}
             >
-              📚 題庫抽 5 題
+              📚 題庫抽題
             </button>
             <button
               onClick={handleGenerateNewSet}
               disabled={loading}
               style={{
-                padding: '10px 16px',
+                padding: '9px 13px',
                 backgroundColor: '#f43f5e',
                 color: '#ffffff',
-                fontSize: '13px',
+                fontSize: '12px',
                 fontWeight: 'bold',
-                borderRadius: '16px',
+                borderRadius: '14px',
                 border: 'none',
                 cursor: loading ? 'not-allowed' : 'pointer',
                 opacity: loading ? 0.6 : 1,
-                boxShadow: '0 4px 12px rgba(244, 63, 94, 0.25)',
+                boxShadow: '0 4px 10px rgba(244, 63, 94, 0.25)',
               }}
             >
-              ⚡ 熊咘咘秒出 5 題
+              ⚡ 熊咘咘秒出題組
             </button>
           </div>
         </header>
@@ -278,7 +348,7 @@ export default function Home() {
           <div
             style={{
               padding: '14px',
-              marginBottom: '20px',
+              marginBottom: '16px',
               backgroundColor: '#ffffff',
               border: '1px solid #fecdd3',
               borderRadius: '20px',
@@ -293,23 +363,23 @@ export default function Home() {
         )}
 
         {totalQuestions > 0 ? (
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px' }}>
-            {/* 左側作答卡清單 */}
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px' }}>
+            {/* 左側作答進度面板 */}
             <div
               style={{
                 flex: '1 1 240px',
                 maxWidth: '260px',
                 backgroundColor: '#ffffff',
-                borderRadius: '24px',
-                padding: '20px',
+                borderRadius: '20px',
+                padding: '18px',
                 border: '1px solid #ffe4e6',
                 boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
                 height: 'fit-content',
               }}
             >
-              <div style={{ marginBottom: '16px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                  <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#94a3b8' }}>作答進度</span>
+              <div style={{ marginBottom: '14px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                  <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#94a3b8' }}>本組進度</span>
                   <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#f43f5e' }}>
                     {answeredCount} / {totalQuestions}
                   </span>
@@ -326,8 +396,15 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* 題號按鈕 */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '8px', marginBottom: '20px' }}>
+              {/* 題號按鈕格 */}
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: `repeat(${totalQuestions <= 4 ? totalQuestions : 5}, 1fr)`,
+                  gap: '8px',
+                  marginBottom: '16px',
+                }}
+              >
                 {questions.map((q, idx) => {
                   const isCurrent = idx === currentIndex;
                   const selectedKey = userSelections[idx];
@@ -336,22 +413,24 @@ export default function Home() {
                   const isWrong = isSubmitted && isAnswered && !isCorrect;
 
                   let bgColor = '#ffffff';
-                  let borderColor = '#e2e8f0';
-                  let textColor = '#334155';
+                  let borderColor = '#cbd5e1';
+                  let textColor = '#0f172a';
 
                   if (isCurrent) {
                     bgColor = '#fff1f2';
                     borderColor = '#fb7185';
-                    textColor = '#881337';
+                    textColor = '#9f1239';
                   }
 
                   if (isSubmitted) {
                     if (isCorrect) {
                       bgColor = '#ecfdf5';
-                      borderColor = '#34d399';
+                      borderColor = '#10b981';
+                      textColor = '#065f46';
                     } else if (isWrong) {
                       bgColor = '#fff1f2';
                       borderColor = '#fb7185';
+                      textColor = '#9f1239';
                     }
                   }
 
@@ -402,41 +481,41 @@ export default function Home() {
                     color: '#ffffff',
                     fontSize: '13px',
                     fontWeight: 'bold',
-                    borderRadius: '16px',
+                    borderRadius: '14px',
                     border: 'none',
                     cursor: 'pointer',
-                    boxShadow: '0 4px 12px rgba(244, 63, 94, 0.3)',
+                    boxShadow: '0 4px 10px rgba(244, 63, 94, 0.3)',
                   }}
                 >
                   📝 寫完了，交卷對答案！
                 </button>
               ) : (
-                <div style={{ textAlign: 'center', padding: '10px 0' }}>
+                <div style={{ textAlign: 'center', padding: '6px 0' }}>
                   <span style={{ fontSize: '24px', fontWeight: '900', color: '#f43f5e' }}>{correctCount}</span>
                   <span style={{ color: '#94a3b8' }}> / {totalQuestions}</span>
                   <p style={{ fontSize: '12px', color: '#64748b', margin: '4px 0 0 0' }}>
-                    {correctCount === totalQuestions ? '🎉 滿分太神啦！' : '很棒！把解析看懂就掌握了！'}
+                    {correctCount === totalQuestions ? '🎉 滿分太神啦！' : '很棒！解析弄懂實力再躍進！'}
                   </p>
                 </div>
               )}
             </div>
 
             {/* 右側作答卡片 */}
-            <div style={{ flex: '1 1 560px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <div style={{ flex: '1 1 540px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {currentQ && (
                 <div
                   style={{
                     backgroundColor: '#ffffff',
                     borderRadius: '24px',
-                    padding: '28px',
+                    padding: '24px',
                     border: '1px solid #ffe4e6',
                     boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
                   }}
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '14px' }}>
                     <span
                       style={{
-                        padding: '4px 12px',
+                        padding: '4px 10px',
                         backgroundColor: '#fff1f2',
                         color: '#e11d48',
                         fontSize: '12px',
@@ -445,37 +524,47 @@ export default function Home() {
                         border: '1px solid #ffe4e6',
                       }}
                     >
-                      {currentQ.part} · {currentQ.topic || '閱讀'}
+                      {currentQ.part} · {currentQ.topic || '題組'}
                     </span>
                     <span style={{ fontSize: '13px', color: '#94a3b8' }}>
                       第 {currentIndex + 1} / {totalQuestions} 題
                     </span>
                   </div>
 
+                  {/* 題組共用文章情境 (Context) */}
                   {currentQ.context && (
                     <div
                       style={{
                         backgroundColor: '#f8fafc',
-                        border: '1px solid #e2e8f0',
-                        borderRadius: '16px',
-                        padding: '18px',
-                        marginBottom: '20px',
-                        fontSize: '14px',
+                        border: '1px solid #cbd5e1',
+                        borderRadius: '14px',
+                        padding: '16px',
+                        marginBottom: '18px',
+                        fontSize: '15px',
                         lineHeight: '1.7',
-                        color: '#334155',
+                        color: '#0f172a',
                         whiteSpace: 'pre-line',
+                        fontFamily: 'Georgia, serif',
                       }}
                     >
                       {currentQ.context}
                     </div>
                   )}
 
-                  <p style={{ fontSize: '17px', fontWeight: '600', color: '#1e293b', lineHeight: '1.6', marginBottom: '20px' }}>
+                  <p
+                    style={{
+                      fontSize: '16px',
+                      fontWeight: '700',
+                      color: '#0f172a',
+                      lineHeight: '1.6',
+                      marginBottom: '18px',
+                    }}
+                  >
                     {currentQ.question}
                   </p>
 
-                  {/* 選項清單 */}
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '24px' }}>
+                  {/* 選項清單（強制黑色字體） */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
                     {Object.entries(currentQ.options || {}).map(([key, val]: any) => {
                       const selected = userSelections[currentIndex] === key;
                       let itemBg = '#ffffff';
@@ -498,38 +587,49 @@ export default function Home() {
                         <button
                           key={key}
                           onClick={() => handleSelectOption(key)}
+                          type="button"
                           style={{
                             width: '100%',
                             textAlign: 'left',
-                            padding: '14px 18px',
-                            borderRadius: '16px',
+                            padding: '12px 16px',
+                            borderRadius: '14px',
                             border: `1.5px solid ${itemBorder}`,
                             backgroundColor: itemBg,
+                            color: '#0f172a', // 強制文字黑色，防止手機預設藍色
                             cursor: isSubmitted ? 'default' : 'pointer',
                             display: 'flex',
                             alignItems: 'center',
                             fontSize: '15px',
+                            outline: 'none',
                           }}
                         >
                           <span
                             style={{
-                              width: '30px',
-                              height: '30px',
-                              borderRadius: '10px',
-                              marginRight: '14px',
+                              width: '28px',
+                              height: '28px',
+                              borderRadius: '8px',
+                              marginRight: '12px',
                               display: 'inline-flex',
                               alignItems: 'center',
                               justifyContent: 'center',
                               fontSize: '13px',
                               fontWeight: 'bold',
                               backgroundColor: selected ? '#f43f5e' : '#f1f5f9',
-                              color: selected ? '#ffffff' : '#475569',
+                              color: selected ? '#ffffff' : '#0f172a',
                               flexShrink: 0,
                             }}
                           >
                             {key}
                           </span>
-                          <span style={{ flex: 1 }}>{val}</span>
+                          <span
+                            style={{
+                              flex: 1,
+                              color: '#0f172a', // 強制內層文字黑色
+                              fontWeight: selected ? '600' : '400',
+                            }}
+                          >
+                            {val}
+                          </span>
                           {isSubmitted && key === currentQ.answer && (
                             <span style={{ fontSize: '13px', color: '#059669', fontWeight: 'bold' }}>✓ 正解</span>
                           )}
@@ -539,15 +639,23 @@ export default function Home() {
                   </div>
 
                   {/* 上下題切換 */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '16px', borderTop: '1px solid #f1f5f9' }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      paddingTop: '14px',
+                      borderTop: '1px solid #f1f5f9',
+                    }}
+                  >
                     <button
                       onClick={() => setCurrentIndex((prev) => Math.max(0, prev - 1))}
                       disabled={currentIndex === 0}
                       style={{
-                        padding: '8px 16px',
-                        border: '1px solid #e2e8f0',
-                        borderRadius: '12px',
+                        padding: '8px 14px',
+                        border: '1px solid #cbd5e1',
+                        borderRadius: '10px',
                         fontSize: '13px',
+                        color: '#0f172a',
                         backgroundColor: '#ffffff',
                         cursor: currentIndex === 0 ? 'not-allowed' : 'pointer',
                         opacity: currentIndex === 0 ? 0.4 : 1,
@@ -559,11 +667,11 @@ export default function Home() {
                       onClick={() => setCurrentIndex((prev) => Math.min(totalQuestions - 1, prev + 1))}
                       disabled={currentIndex === totalQuestions - 1}
                       style={{
-                        padding: '8px 16px',
-                        backgroundColor: '#1e293b',
+                        padding: '8px 14px',
+                        backgroundColor: '#0f172a',
                         color: '#ffffff',
                         border: 'none',
-                        borderRadius: '12px',
+                        borderRadius: '10px',
                         fontSize: '13px',
                         cursor: currentIndex === totalQuestions - 1 ? 'not-allowed' : 'pointer',
                         opacity: currentIndex === totalQuestions - 1 ? 0.4 : 1,
@@ -575,14 +683,30 @@ export default function Home() {
 
                   {/* 解析與中文翻譯 */}
                   {isSubmitted && (
-                    <div style={{ marginTop: '20px', padding: '18px', backgroundColor: '#fff1f2', borderRadius: '16px', border: '1px solid #ffe4e6' }}>
-                      <div style={{ marginBottom: '10px' }}>
-                        <h4 style={{ fontSize: '12px', fontWeight: 'bold', color: '#94a3b8', margin: '0 0 4px 0' }}>中文翻譯</h4>
-                        <p style={{ fontSize: '14px', color: '#334155', margin: 0 }}>{currentQ.translation}</p>
+                    <div
+                      style={{
+                        marginTop: '18px',
+                        padding: '16px',
+                        backgroundColor: '#fff1f2',
+                        borderRadius: '14px',
+                        border: '1px solid #ffe4e6',
+                      }}
+                    >
+                      <div style={{ marginBottom: '8px' }}>
+                        <h4 style={{ fontSize: '12px', fontWeight: 'bold', color: '#94a3b8', margin: '0 0 4px 0' }}>
+                          中文翻譯
+                        </h4>
+                        <p style={{ fontSize: '14px', color: '#0f172a', margin: 0, lineHeight: '1.6' }}>
+                          {currentQ.translation}
+                        </p>
                       </div>
-                      <div style={{ paddingTop: '10px', borderTop: '1px solid #ffe4e6' }}>
-                        <h4 style={{ fontSize: '12px', fontWeight: 'bold', color: '#f43f5e', margin: '0 0 4px 0' }}>考點詳解</h4>
-                        <p style={{ fontSize: '14px', color: '#1e293b', margin: 0 }}>{currentQ.explanation}</p>
+                      <div style={{ paddingTop: '8px', borderTop: '1px solid #ffe4e6' }}>
+                        <h4 style={{ fontSize: '12px', fontWeight: 'bold', color: '#f43f5e', margin: '0 0 4px 0' }}>
+                          考點詳解
+                        </h4>
+                        <p style={{ fontSize: '14px', color: '#0f172a', margin: 0, lineHeight: '1.6' }}>
+                          {currentQ.explanation}
+                        </p>
                       </div>
                     </div>
                   )}
@@ -592,8 +716,16 @@ export default function Home() {
           </div>
         ) : (
           !loading && (
-            <div style={{ textAlign: 'center', padding: '80px 20px', backgroundColor: '#ffffff', borderRadius: '24px', border: '2px dashed #fecdd3' }}>
-              <p style={{ color: '#64748b', marginBottom: '14px' }}>目前沒有【{selectedPart}】的題目喔！</p>
+            <div
+              style={{
+                textAlign: 'center',
+                padding: '60px 20px',
+                backgroundColor: '#ffffff',
+                borderRadius: '24px',
+                border: '2px dashed #fecdd3',
+              }}
+            >
+              <p style={{ color: '#64748b', marginBottom: '14px' }}>目前還沒有【{selectedPart}】的題組喔！</p>
               <button
                 onClick={handleGenerateNewSet}
                 style={{
@@ -602,18 +734,18 @@ export default function Home() {
                   color: '#ffffff',
                   fontSize: '13px',
                   fontWeight: 'bold',
-                  borderRadius: '16px',
+                  borderRadius: '14px',
                   border: 'none',
                   cursor: 'pointer',
                 }}
               >
-                🧸 請熊咘咘出 5 題
+                🧸 請熊咘咘出題組
               </button>
             </div>
           )
         )}
 
-        {/* 歷史作答紀錄彈窗 (Modal) */}
+        {/* 歷史作答紀錄彈窗 */}
         {showHistoryModal && (
           <div
             style={{
@@ -645,32 +777,45 @@ export default function Home() {
                 overflow: 'hidden',
               }}
             >
-              {/* 彈窗頂部 */}
               <div
                 style={{
-                  padding: '20px 24px',
+                  padding: '16px 20px',
                   borderBottom: '1px solid #f1f5f9',
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
                 }}
               >
-                <div>
-                  <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#1e293b', margin: 0 }}>
-                    📊 寶寶的答題歷程
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {selectedSession && (
+                    <button
+                      onClick={() => setSelectedSession(null)}
+                      style={{
+                        padding: '4px 10px',
+                        borderRadius: '8px',
+                        border: '1px solid #cbd5e1',
+                        backgroundColor: '#ffffff',
+                        cursor: 'pointer',
+                        fontSize: '12px',
+                        fontWeight: 'bold',
+                        color: '#0f172a',
+                      }}
+                    >
+                      ← 返回列表
+                    </button>
+                  )}
+                  <h3 style={{ fontSize: '17px', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>
+                    {selectedSession ? `📝 ${selectedSession.dateStr} 作答詳情` : '📊 寶寶的歷次考試紀錄'}
                   </h3>
-                  <p style={{ fontSize: '12px', color: '#64748b', margin: '4px 0 0 0' }}>
-                    累計作答 {totalHistoryCount} 題 · 整體正確率 {historyAccuracy}%
-                  </p>
                 </div>
                 <button
                   onClick={() => setShowHistoryModal(false)}
                   style={{
                     border: 'none',
                     backgroundColor: '#f1f5f9',
-                    borderRadius: '12px',
-                    width: '32px',
-                    height: '32px',
+                    borderRadius: '10px',
+                    width: '30px',
+                    height: '30px',
                     cursor: 'pointer',
                     fontSize: '14px',
                     color: '#64748b',
@@ -680,62 +825,135 @@ export default function Home() {
                 </button>
               </div>
 
-              {/* 彈窗內容區塊 */}
-              <div style={{ padding: '20px 24px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div style={{ padding: '16px 20px', overflowY: 'auto', flex: 1 }}>
                 {loadingHistory ? (
                   <div style={{ textAlign: 'center', padding: '40px 0', color: '#f43f5e', fontWeight: 'bold' }}>
-                    熊咘咘翻筆記本中... 🐾
+                    熊咘咘整理紀錄中... 🐾
                   </div>
-                ) : historyRecords.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '40px 0', color: '#94a3b8' }}>
-                    目前還沒有歷史答題紀錄，快去寫寫看吧！✨
-                  </div>
-                ) : (
-                  historyRecords.map((item, i) => (
-                    <div
-                      key={item.id || i}
-                      style={{
-                        padding: '16px',
-                        borderRadius: '16px',
-                        border: `1.5px solid ${item.is_correct ? '#a7f3d0' : '#fecdd3'}`,
-                        backgroundColor: item.is_correct ? '#f0fdf4' : '#fff1f2',
-                      }}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                        <span
+                ) : !selectedSession ? (
+                  examSessions.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '40px 0', color: '#94a3b8' }}>
+                      目前還沒有考試紀錄喔，去寫一組試試吧！✨
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                      {examSessions.map((session) => (
+                        <div
+                          key={session.sessionId}
+                          onClick={() => setSelectedSession(session)}
                           style={{
-                            fontSize: '11px',
-                            fontWeight: 'bold',
-                            padding: '2px 8px',
-                            borderRadius: '9999px',
-                            backgroundColor: item.is_correct ? '#d1fae5' : '#ffe4e6',
-                            color: item.is_correct ? '#065f46' : '#9f1239',
+                            padding: '14px 18px',
+                            borderRadius: '14px',
+                            border: '1px solid #ffe4e6',
+                            backgroundColor: '#fff1f2',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center',
+                            cursor: 'pointer',
                           }}
                         >
-                          {item.questions?.part || 'TOEIC'} · {item.is_correct ? '✓ 答對' : '✕ 答錯'}
-                        </span>
-                        <span style={{ fontSize: '11px', color: '#94a3b8' }}>
-                          {item.created_at ? new Date(item.created_at).toLocaleString('zh-TW', { hour12: false }) : ''}
-                        </span>
-                      </div>
-                      <p style={{ fontSize: '14px', fontWeight: '600', color: '#1e293b', marginBottom: '8px', lineHeight: '1.5' }}>
-                        {item.questions?.question}
-                      </p>
-                      <div style={{ fontSize: '13px', color: '#475569', marginBottom: '6px' }}>
-                        寶寶選：<span style={{ fontWeight: 'bold', color: item.is_correct ? '#059669' : '#e11d48' }}>{item.selected_option}</span>
-                        {!item.is_correct && (
-                          <span style={{ marginLeft: '12px' }}>
-                            正解：<span style={{ fontWeight: 'bold', color: '#059669' }}>{item.questions?.answer}</span>
+                          <div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2px' }}>
+                              <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#0f172a' }}>
+                                {session.dateStr}
+                              </span>
+                              <span
+                                style={{
+                                  fontSize: '11px',
+                                  fontWeight: 'bold',
+                                  padding: '2px 8px',
+                                  borderRadius: '9999px',
+                                  backgroundColor: '#ffe4e6',
+                                  color: '#e11d48',
+                                }}
+                              >
+                                {session.part}
+                              </span>
+                            </div>
+                            <span style={{ fontSize: '12px', color: '#64748b' }}>
+                              共 {session.total} 題 · 點擊查看題目光碟 🔍
+                            </span>
+                          </div>
+                          <div style={{ textAlign: 'right' }}>
+                            <div style={{ fontSize: '15px', fontWeight: '900', color: '#f43f5e' }}>
+                              {session.correct} / {session.total} 題
+                            </div>
+                            <span
+                              style={{
+                                fontSize: '12px',
+                                fontWeight: 'bold',
+                                color: session.accuracy >= 70 ? '#059669' : '#e11d48',
+                              }}
+                            >
+                              答對率 {session.accuracy}%
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <div
+                      style={{
+                        padding: '10px 14px',
+                        backgroundColor: '#f8fafc',
+                        borderRadius: '12px',
+                        border: '1px solid #e2e8f0',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                      }}
+                    >
+                      <span style={{ fontSize: '13px', fontWeight: '600', color: '#0f172a' }}>
+                        成績：{selectedSession.correct} / {selectedSession.total} ({selectedSession.accuracy}%)
+                      </span>
+                      <span style={{ fontSize: '12px', color: '#94a3b8' }}>{selectedSession.part}</span>
+                    </div>
+
+                    {selectedSession.items.map((item, idx) => (
+                      <div
+                        key={item.id || idx}
+                        style={{
+                          padding: '14px',
+                          borderRadius: '14px',
+                          border: `1.5px solid ${item.is_correct ? '#a7f3d0' : '#fecdd3'}`,
+                          backgroundColor: item.is_correct ? '#f0fdf4' : '#fff1f2',
+                        }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                          <span
+                            style={{
+                              fontSize: '11px',
+                              fontWeight: 'bold',
+                              padding: '2px 8px',
+                              borderRadius: '9999px',
+                              backgroundColor: item.is_correct ? '#d1fae5' : '#ffe4e6',
+                              color: item.is_correct ? '#065f46' : '#9f1239',
+                            }}
+                          >
+                            第 {idx + 1} 題 · {item.is_correct ? '✓ 答對' : '✕ 答錯'}
                           </span>
+                        </div>
+                        <p style={{ fontSize: '14px', fontWeight: '600', color: '#0f172a', marginBottom: '6px', lineHeight: '1.5' }}>
+                          {item.questions?.question}
+                        </p>
+                        <div style={{ fontSize: '13px', color: '#334155', marginBottom: '6px' }}>
+                          寶寶選：<span style={{ fontWeight: 'bold', color: item.is_correct ? '#059669' : '#e11d48' }}>{item.selected_option}</span>
+                          {!item.is_correct && (
+                            <span style={{ marginLeft: '12px' }}>
+                              正解：<span style={{ fontWeight: 'bold', color: '#059669' }}>{item.questions?.answer}</span>
+                            </span>
+                          )}
+                        </div>
+                        {item.questions?.explanation && (
+                          <div style={{ fontSize: '12px', color: '#64748b', marginTop: '6px', paddingTop: '6px', borderTop: '1px dashed #cbd5e1' }}>
+                            💡 解析：{item.questions?.explanation}
+                          </div>
                         )}
                       </div>
-                      {item.questions?.explanation && (
-                        <div style={{ fontSize: '12px', color: '#64748b', marginTop: '6px', paddingTop: '6px', borderTop: '1px dashed #cbd5e1' }}>
-                          💡 解析：{item.questions?.explanation}
-                        </div>
-                      )}
-                    </div>
-                  ))
+                    ))}
+                  </div>
                 )}
               </div>
             </div>
