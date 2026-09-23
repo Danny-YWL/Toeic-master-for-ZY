@@ -64,11 +64,9 @@ export default function Home() {
       let selectedQuestions: any[] = [];
 
       if (partToFilter === 'Part 5') {
-        // Part 5：隨機打亂並取 5 題
         const shuffled = [...data].sort(() => 0.5 - Math.random());
         selectedQuestions = shuffled.slice(0, 5);
       } else {
-        // Part 6 或 Part 7：按 context (文章) 分組，隨機挑選其中一整組題組
         const contextMap = new Map<string, any[]>();
         data.forEach((q) => {
           const key = q.context || 'general';
@@ -159,7 +157,7 @@ export default function Home() {
     await supabase.from('user_answers').insert(records);
   }
 
-  // 讀取歷次紀錄
+  // 讀取歷次紀錄（已補上 options 欄位）
   async function fetchHistory() {
     setLoadingHistory(true);
     setSelectedSession(null);
@@ -174,6 +172,7 @@ export default function Home() {
           created_at,
           questions (
             question,
+            options,
             answer,
             part,
             explanation
@@ -244,7 +243,7 @@ export default function Home() {
     }
   }
 
-  // 刪除單場次紀錄功能（含資料庫實際刪除驗證）
+  // 刪除單場次紀錄功能
   async function handleDeleteSession(e: React.MouseEvent, session: ExamSession) {
     e.stopPropagation();
     const confirmDelete = window.confirm(`確定要刪除 ${session.dateStr}（${session.part}）的作答紀錄嗎？`);
@@ -966,7 +965,7 @@ export default function Home() {
                     </div>
                   )
                 ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                     <div
                       style={{
                         padding: '10px 14px',
@@ -999,48 +998,135 @@ export default function Home() {
                       </button>
                     </div>
 
-                    {selectedSession.items.map((item, idx) => (
-                      <div
-                        key={item.id || idx}
-                        style={{
-                          padding: '14px',
-                          borderRadius: '14px',
-                          border: `1.5px solid ${item.is_correct ? '#a7f3d0' : '#fecdd3'}`,
-                          backgroundColor: item.is_correct ? '#f0fdf4' : '#fff1f2',
-                        }}
-                      >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                          <span
-                            style={{
-                              fontSize: '11px',
-                              fontWeight: 'bold',
-                              padding: '2px 8px',
-                              borderRadius: '9999px',
-                              backgroundColor: item.is_correct ? '#d1fae5' : '#ffe4e6',
-                              color: item.is_correct ? '#065f46' : '#9f1239',
-                            }}
-                          >
-                            第 {idx + 1} 題 · {item.is_correct ? '✓ 答對' : '✕ 答錯'}
-                          </span>
-                        </div>
-                        <p style={{ fontSize: '14px', fontWeight: '600', color: '#0f172a', marginBottom: '6px', lineHeight: '1.5' }}>
-                          {item.questions?.question}
-                        </p>
-                        <div style={{ fontSize: '13px', color: '#334155', marginBottom: '6px' }}>
-                          寶寶選：<span style={{ fontWeight: 'bold', color: item.is_correct ? '#059669' : '#e11d48' }}>{item.selected_option}</span>
-                          {!item.is_correct && (
-                            <span style={{ marginLeft: '12px' }}>
-                              正解：<span style={{ fontWeight: 'bold', color: '#059669' }}>{item.questions?.answer}</span>
+                    {selectedSession.items.map((item, idx) => {
+                      const qObj = item.questions;
+                      const isCorrect = item.is_correct;
+                      const userChoice = item.selected_option;
+                      const correctChoice = qObj?.answer;
+                      const optionsMap = qObj?.options || {};
+
+                      return (
+                        <div
+                          key={item.id || idx}
+                          style={{
+                            padding: '16px',
+                            borderRadius: '16px',
+                            border: `1.5px solid ${isCorrect ? '#a7f3d0' : '#fecdd3'}`,
+                            backgroundColor: isCorrect ? '#f0fdf4' : '#fff1f2',
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                            <span
+                              style={{
+                                fontSize: '11px',
+                                fontWeight: 'bold',
+                                padding: '2px 8px',
+                                borderRadius: '9999px',
+                                backgroundColor: isCorrect ? '#d1fae5' : '#ffe4e6',
+                                color: isCorrect ? '#065f46' : '#9f1239',
+                              }}
+                            >
+                              第 {idx + 1} 題 · {isCorrect ? '✓ 答對' : '✕ 答錯'}
                             </span>
+                          </div>
+
+                          <p style={{ fontSize: '14px', fontWeight: '700', color: '#0f172a', marginBottom: '12px', lineHeight: '1.5' }}>
+                            {qObj?.question}
+                          </p>
+
+                          {/* 完整列出 ABCD 選項 */}
+                          {Object.keys(optionsMap).length > 0 && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginBottom: '12px' }}>
+                              {Object.entries(optionsMap).map(([optKey, optText]: any) => {
+                                const isUserPick = userChoice === optKey;
+                                const isAnswerKey = correctChoice === optKey;
+
+                                let optBg = '#ffffff';
+                                let optBorder = '#e2e8f0';
+                                let tagText = '';
+                                let tagBg = '#f1f5f9';
+                                let tagColor = '#475569';
+
+                                if (isAnswerKey) {
+                                  optBg = '#ecfdf5';
+                                  optBorder = '#10b981';
+                                  tagText = '✓ 正解';
+                                  tagBg = '#10b981';
+                                  tagColor = '#ffffff';
+                                } else if (isUserPick && !isCorrect) {
+                                  optBg = '#fff1f2';
+                                  optBorder = '#fb7185';
+                                  tagText = '✕ 寶寶選這個';
+                                  tagBg = '#f43f5e';
+                                  tagColor = '#ffffff';
+                                }
+
+                                return (
+                                  <div
+                                    key={optKey}
+                                    style={{
+                                      padding: '8px 12px',
+                                      borderRadius: '10px',
+                                      border: `1.5px solid ${optBorder}`,
+                                      backgroundColor: optBg,
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'space-between',
+                                      fontSize: '13px',
+                                      color: '#0f172a',
+                                    }}
+                                  >
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                      <span
+                                        style={{
+                                          width: '22px',
+                                          height: '22px',
+                                          borderRadius: '6px',
+                                          backgroundColor: isUserPick ? (isCorrect ? '#10b981' : '#f43f5e') : '#e2e8f0',
+                                          color: isUserPick ? '#ffffff' : '#334155',
+                                          display: 'inline-flex',
+                                          alignItems: 'center',
+                                          justifyContent: 'center',
+                                          fontWeight: 'bold',
+                                          fontSize: '12px',
+                                          flexShrink: 0,
+                                        }}
+                                      >
+                                        {optKey}
+                                      </span>
+                                      <span style={{ fontWeight: isAnswerKey || isUserPick ? '600' : '400' }}>
+                                        {optText}
+                                      </span>
+                                    </div>
+                                    {tagText && (
+                                      <span
+                                        style={{
+                                          fontSize: '11px',
+                                          fontWeight: 'bold',
+                                          padding: '2px 6px',
+                                          borderRadius: '6px',
+                                          backgroundColor: tagBg,
+                                          color: tagColor,
+                                          flexShrink: 0,
+                                        }}
+                                      >
+                                        {tagText}
+                                      </span>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+
+                          {qObj?.explanation && (
+                            <div style={{ fontSize: '12px', color: '#64748b', marginTop: '6px', paddingTop: '8px', borderTop: '1px dashed #cbd5e1', lineHeight: '1.6' }}>
+                              💡 解析：{qObj?.explanation}
+                            </div>
                           )}
                         </div>
-                        {item.questions?.explanation && (
-                          <div style={{ fontSize: '12px', color: '#64748b', marginTop: '6px', paddingTop: '6px', borderTop: '1px dashed #cbd5e1' }}>
-                            💡 解析：{item.questions?.explanation}
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </div>
