@@ -29,12 +29,10 @@ export default function Home() {
   const [cheerMsg, setCheerMsg] = useState(CHEER_MESSAGES[0]);
 
   useEffect(() => {
-    // 每次載入隨機抽一句加油語
     const randomMsg = CHEER_MESSAGES[Math.floor(Math.random() * CHEER_MESSAGES.length)];
     setCheerMsg(randomMsg);
   }, [currentIndex, isSubmitted]);
 
-  // 模式 1：從累積題庫隨機抽取複習（秒開、不耗等待時間）
   async function handleReviewFromBank() {
     setLoading(true);
     setLoadingText('熊咘咘正在翻題庫幫寶寶挑精選題目中... 🐾');
@@ -63,7 +61,6 @@ export default function Home() {
     }
   }
 
-  // 模式 2：熊咘咘全新出題並自動存入題庫
   async function handleGenerateNewSet() {
     setLoading(true);
     const randomTopic = TOEIC_TOPICS[Math.floor(Math.random() * TOEIC_TOPICS.length)];
@@ -128,25 +125,84 @@ export default function Home() {
   const correctCount = questions.filter((q, idx) => userSelections[idx] === q.answer).length;
 
   return (
-    <main className="min-h-screen bg-rose-50/50 py-8 px-4 selection:bg-rose-100 selection:text-rose-700">
-      <div className="max-w-5xl mx-auto">
+    <main
+      className="min-h-screen py-8 px-4"
+      style={{
+        backgroundColor: '#fff1f2',
+        minHeight: '100vh',
+        padding: '32px 16px',
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+      }}
+    >
+      <div style={{ maxWidth: '1024px', margin: '0 auto' }}>
         {/* 可愛粉萌頂部導覽列 */}
-        <header className="bg-white rounded-3xl p-6 shadow-sm border border-rose-100 mb-6 flex flex-wrap justify-between items-center gap-4">
+        <header
+          style={{
+            backgroundColor: '#ffffff',
+            borderRadius: '24px',
+            padding: '24px',
+            border: '1px solid #ffe4e6',
+            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
+            marginBottom: '24px',
+            display: 'flex',
+            flexWrap: 'wrap',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: '16px',
+          }}
+        >
           <div>
-            <div className="flex items-center gap-2">
-              <span className="text-2xl">🧸</span>
-              <h1 className="text-2xl font-black text-slate-800 tracking-tight">寶寶的多益專屬特訓室</h1>
-              <span className="text-xs bg-rose-100 text-rose-600 font-bold px-3 py-1 rounded-full">Part 5 專練</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span style={{ fontSize: '24px' }}>🧸</span>
+              <h1 style={{ fontSize: '22px', fontWeight: '900', color: '#1e293b', margin: 0 }}>
+                寶寶的多益專屬特訓室
+              </h1>
+              <span
+                style={{
+                  fontSize: '12px',
+                  backgroundColor: '#ffe4e6',
+                  color: '#e11d48',
+                  fontWeight: 'bold',
+                  padding: '4px 12px',
+                  borderRadius: '9999px',
+                }}
+              >
+                Part 5 專練
+              </span>
             </div>
-            <p className="text-xs text-rose-500 font-medium mt-1.5 flex items-center gap-1">
+            <p
+              style={{
+                fontSize: '13px',
+                color: '#f43f5e',
+                fontWeight: '500',
+                marginTop: '6px',
+                marginBottom: 0,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+              }}
+            >
               <span>💌</span> <span>{cheerMsg}</span>
             </p>
           </div>
-          <div className="flex gap-2.5">
+          <div style={{ display: 'flex', gap: '10px' }}>
             <button
               onClick={handleReviewFromBank}
               disabled={loading}
-              className="px-4 py-2.5 bg-slate-800 text-white text-xs font-bold rounded-2xl hover:bg-black active:scale-95 disabled:opacity-50 transition shadow-sm flex items-center gap-1.5"
+              style={{
+                padding: '10px 16px',
+                backgroundColor: '#1e293b',
+                color: '#ffffff',
+                fontSize: '13px',
+                fontWeight: 'bold',
+                borderRadius: '16px',
+                border: 'none',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                opacity: loading ? 0.6 : 1,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+              }}
             >
               <span>📚</span>
               <span>題庫抽 10 題複習</span>
@@ -154,7 +210,21 @@ export default function Home() {
             <button
               onClick={handleGenerateNewSet}
               disabled={loading}
-              className="px-4 py-2.5 bg-rose-500 text-white text-xs font-bold rounded-2xl hover:bg-rose-600 active:scale-95 disabled:opacity-50 transition shadow-sm flex items-center gap-1.5"
+              style={{
+                padding: '10px 16px',
+                backgroundColor: '#f43f5e',
+                color: '#ffffff',
+                fontSize: '13px',
+                fontWeight: 'bold',
+                borderRadius: '16px',
+                border: 'none',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                opacity: loading ? 0.6 : 1,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                boxShadow: '0 4px 12px rgba(244, 63, 94, 0.25)',
+              }}
             >
               <span>🧸</span>
               <span>熊咘咘出新題目</span>
@@ -163,33 +233,77 @@ export default function Home() {
         </header>
 
         {loading && (
-          <div className="p-4 mb-6 bg-white border border-rose-200 rounded-3xl text-center text-sm font-bold text-rose-500 shadow-sm animate-pulse flex items-center justify-center gap-2">
+          <div
+            style={{
+              padding: '16px',
+              marginBottom: '24px',
+              backgroundColor: '#ffffff',
+              border: '1px solid #fecdd3',
+              borderRadius: '24px',
+              textAlign: 'center',
+              fontSize: '14px',
+              fontWeight: 'bold',
+              color: '#f43f5e',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+            }}
+          >
             <span>🐾</span>
             <span>{loadingText}</span>
           </div>
         )}
 
         {totalQuestions > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '24px' }}>
             {/* 左側答題狀態面板 */}
-            <div className="md:col-span-1 bg-white rounded-3xl p-5 shadow-sm border border-rose-100 h-fit space-y-5">
-              <div>
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">作答進度</span>
-                  <span className="text-xs font-bold text-rose-500 bg-rose-50 px-2.5 py-0.5 rounded-full border border-rose-100">
+            <div
+              style={{
+                flex: '1 1 260px',
+                maxWidth: '280px',
+                backgroundColor: '#ffffff',
+                borderRadius: '24px',
+                padding: '20px',
+                border: '1px solid #ffe4e6',
+                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
+                height: 'fit-content',
+              }}
+            >
+              <div style={{ marginBottom: '20px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#94a3b8', letterSpacing: '0.05em' }}>
+                    作答進度
+                  </span>
+                  <span
+                    style={{
+                      fontSize: '12px',
+                      fontWeight: 'bold',
+                      color: '#f43f5e',
+                      backgroundColor: '#fff1f2',
+                      padding: '2px 10px',
+                      borderRadius: '9999px',
+                      border: '1px solid #ffe4e6',
+                    }}
+                  >
                     {answeredCount} / {totalQuestions}
                   </span>
                 </div>
-                <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                <div style={{ width: '100%', backgroundColor: '#f1f5f9', height: '8px', borderRadius: '9999px', overflow: 'hidden' }}>
                   <div
-                    className="bg-rose-400 h-full rounded-full transition-all duration-300 ease-out"
-                    style={{ width: `${progressPercent}%` }}
+                    style={{
+                      backgroundColor: '#fb7185',
+                      height: '100%',
+                      borderRadius: '9999px',
+                      width: `${progressPercent}%`,
+                      transition: 'width 0.3s ease',
+                    }}
                   />
                 </div>
               </div>
 
               {/* 題號按鈕格 */}
-              <div className="grid grid-cols-5 gap-2.5">
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '10px', marginBottom: '20px' }}>
                 {questions.map((q, idx) => {
                   const isCurrent = idx === currentIndex;
                   const selectedKey = userSelections[idx];
@@ -197,28 +311,35 @@ export default function Home() {
                   const isCorrect = isSubmitted && selectedKey === q.answer;
                   const isWrong = isSubmitted && isAnswered && !isCorrect;
 
-                  let containerStyle = 'bg-white border-slate-200 text-slate-700 hover:border-rose-200 hover:-translate-y-0.5 shadow-sm';
-                  let badgeStyle = 'bg-slate-200 text-slate-600';
+                  let bgColor = '#ffffff';
+                  let borderColor = '#e2e8f0';
+                  let textColor = '#334155';
+                  let badgeBg = '#e2e8f0';
+                  let badgeText = '#475569';
 
                   if (isCurrent) {
-                    containerStyle = 'ring-2 ring-rose-400 border-rose-400 bg-rose-50/40 text-rose-900 font-bold -translate-y-0.5 shadow';
+                    bgColor = '#fff1f2';
+                    borderColor = '#fb7185';
+                    textColor = '#881337';
                   }
 
                   if (!isSubmitted) {
                     if (isAnswered) {
-                      badgeStyle = 'bg-rose-500 text-white font-bold animate-in zoom-in-50 duration-200';
-                      if (!isCurrent) containerStyle = 'bg-rose-50/20 border-rose-200 text-rose-950 font-medium hover:border-rose-300';
+                      badgeBg = '#f43f5e';
+                      badgeText = '#ffffff';
+                      if (!isCurrent) borderColor = '#fecdd3';
                     }
                   } else {
                     if (isCorrect) {
-                      containerStyle = 'bg-emerald-50 border-emerald-400 text-emerald-900 font-bold';
-                      badgeStyle = 'bg-emerald-500 text-white font-bold';
+                      bgColor = '#ecfdf5';
+                      borderColor = '#34d399';
+                      badgeBg = '#10b981';
+                      badgeText = '#ffffff';
                     } else if (isWrong) {
-                      containerStyle = 'bg-rose-50 border-rose-400 text-rose-900 font-bold';
-                      badgeStyle = 'bg-rose-500 text-white font-bold';
-                    } else {
-                      containerStyle = 'bg-slate-50 border-slate-200 text-slate-400 opacity-60';
-                      badgeStyle = 'bg-slate-200 text-slate-500';
+                      bgColor = '#fff1f2';
+                      borderColor = '#fb7185';
+                      badgeBg = '#f43f5e';
+                      badgeText = '#ffffff';
                     }
                   }
 
@@ -226,41 +347,103 @@ export default function Home() {
                     <button
                       key={idx}
                       onClick={() => setCurrentIndex(idx)}
-                      className={`relative h-12 rounded-2xl border flex flex-col items-center justify-center transition-all duration-150 active:scale-95 ${containerStyle}`}
+                      style={{
+                        position: 'relative',
+                        height: '46px',
+                        borderRadius: '14px',
+                        border: `1.5px solid ${borderColor}`,
+                        backgroundColor: bgColor,
+                        color: textColor,
+                        fontWeight: isCurrent ? 'bold' : '600',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
                     >
-                      <span className="text-[11px] font-semibold">{idx + 1}</span>
-                      {isAnswered ? (
-                        <span className={`text-[9px] px-1.5 py-0.2 rounded-full absolute -top-1.5 -right-1.5 shadow-sm ${badgeStyle}`}>
+                      <span style={{ fontSize: '13px' }}>{idx + 1}</span>
+                      {isAnswered && (
+                        <span
+                          style={{
+                            fontSize: '9px',
+                            fontWeight: 'bold',
+                            padding: '1px 5px',
+                            borderRadius: '9999px',
+                            position: 'absolute',
+                            top: '-6px',
+                            right: '-6px',
+                            backgroundColor: badgeBg,
+                            color: badgeText,
+                          }}
+                        >
                           {selectedKey}
                         </span>
-                      ) : (
-                        <span className="w-1.5 h-1.5 rounded-full bg-slate-200 mt-0.5" />
                       )}
                     </button>
                   );
                 })}
               </div>
 
-              <div className="pt-2 space-y-2">
+              <div>
                 {!isSubmitted ? (
                   <button
                     onClick={handleSubmitQuiz}
-                    className="w-full py-3 bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold rounded-2xl transition-all active:scale-[0.98] shadow-md shadow-rose-200 flex items-center justify-center gap-1.5"
+                    style={{
+                      width: '100%',
+                      padding: '12px',
+                      backgroundColor: '#f43f5e',
+                      color: '#ffffff',
+                      fontSize: '13px',
+                      fontWeight: 'bold',
+                      borderRadius: '16px',
+                      border: 'none',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px',
+                      boxShadow: '0 4px 12px rgba(244, 63, 94, 0.3)',
+                    }}
                   >
                     <span>📝</span>
                     <span>寫完了，交卷對答案！</span>
                   </button>
                 ) : (
-                  <div className="space-y-2">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <button
                       onClick={handleReviewFromBank}
-                      className="w-full py-2.5 bg-slate-800 hover:bg-black text-white text-xs font-bold rounded-2xl transition shadow"
+                      style={{
+                        width: '100%',
+                        padding: '10px',
+                        backgroundColor: '#1e293b',
+                        color: '#ffffff',
+                        fontSize: '13px',
+                        fontWeight: 'bold',
+                        borderRadius: '16px',
+                        border: 'none',
+                        cursor: 'pointer',
+                      }}
                     >
                       📚 題庫隨機再抽一組
                     </button>
                     <button
                       onClick={handleGenerateNewSet}
-                      className="w-full py-2.5 bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold rounded-2xl transition shadow flex items-center justify-center gap-1"
+                      style={{
+                        width: '100%',
+                        padding: '10px',
+                        backgroundColor: '#f43f5e',
+                        color: '#ffffff',
+                        fontSize: '13px',
+                        fontWeight: 'bold',
+                        borderRadius: '16px',
+                        border: 'none',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '4px',
+                      }}
                     >
                       <span>🧸</span>
                       <span>請熊咘咘再出新題目</span>
@@ -271,24 +454,37 @@ export default function Home() {
             </div>
 
             {/* 右側作答卡片 */}
-            <div className="md:col-span-3 space-y-6">
+            <div style={{ flex: '1 1 500px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
               {/* 結算結合成績卡 */}
               {isSubmitted && (
-                <div className="bg-white rounded-3xl p-6 shadow-sm border border-rose-100 flex items-center justify-between animate-in fade-in duration-300">
+                <div
+                  style={{
+                    backgroundColor: '#ffffff',
+                    borderRadius: '24px',
+                    padding: '24px',
+                    border: '1px solid #ffe4e6',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                  }}
+                >
                   <div>
-                    <h3 className="text-lg font-bold text-slate-800">
+                    <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#1e293b', margin: 0 }}>
                       {correctCount === totalQuestions
                         ? '🎉 哇！！全對滿分！太厲害了寶寶！'
                         : correctCount >= totalQuestions * 0.7
                         ? '✨ 答得很棒耶！超優秀！'
                         : '很棒喔！把錯題弄懂實力又更強了 💖'}
                     </h3>
-                    <p className="text-xs text-slate-400 mt-0.5">點擊左側題號看熊咘咘整理的考點與中譯解析喔！</p>
+                    <p style={{ fontSize: '13px', color: '#94a3b8', margin: '4px 0 0 0' }}>
+                      點擊左側題號看熊咘咘整理的考點與中譯解析喔！
+                    </p>
                   </div>
-                  <div className="text-right">
-                    <span className="text-3xl font-black text-rose-500">{correctCount}</span>
-                    <span className="text-slate-400 font-bold"> / {totalQuestions}</span>
-                    <span className="block text-[11px] text-slate-400 mt-0.5">
+                  <div style={{ textAlign: 'right' }}>
+                    <span style={{ fontSize: '30px', fontWeight: '900', color: '#f43f5e' }}>{correctCount}</span>
+                    <span style={{ color: '#94a3b8', fontWeight: 'bold' }}> / {totalQuestions}</span>
+                    <span style={{ display: 'block', fontSize: '12px', color: '#94a3b8', marginTop: '2px' }}>
                       正確率 {Math.round((correctCount / totalQuestions) * 100)}%
                     </span>
                   </div>
@@ -297,35 +493,77 @@ export default function Home() {
 
               {/* 題目本體 */}
               {currentQ && (
-                <div className="bg-white rounded-3xl p-7 shadow-sm border border-rose-100">
-                  <div className="flex justify-between items-center mb-4">
-                    <span className="px-3 py-1 bg-rose-50 text-rose-600 text-[11px] font-semibold rounded-full border border-rose-100">
+                <div
+                  style={{
+                    backgroundColor: '#ffffff',
+                    borderRadius: '24px',
+                    padding: '28px',
+                    border: '1px solid #ffe4e6',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                    <span
+                      style={{
+                        padding: '4px 12px',
+                        backgroundColor: '#fff1f2',
+                        color: '#e11d48',
+                        fontSize: '12px',
+                        fontWeight: 'bold',
+                        borderRadius: '9999px',
+                        border: '1px solid #ffe4e6',
+                      }}
+                    >
                       {currentQ.topic || 'Part 5 單句填空'}
                     </span>
-                    <span className="text-xs font-medium text-slate-400">
+                    <span style={{ fontSize: '13px', color: '#94a3b8', fontWeight: '500' }}>
                       第 {currentIndex + 1} / {totalQuestions} 題
                     </span>
                   </div>
 
-                  <p className="text-base md:text-lg font-semibold text-slate-800 leading-relaxed mb-6">
+                  <p
+                    style={{
+                      fontSize: '17px',
+                      fontWeight: '600',
+                      color: '#1e293b',
+                      lineHeight: '1.6',
+                      marginBottom: '24px',
+                    }}
+                  >
                     {currentQ.question}
                   </p>
 
-                  {/* 選項列表 */}
-                  <div className="space-y-3 mb-6">
+                  {/* 選項列表（修正空格與間隔） */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '24px' }}>
                     {Object.entries(currentQ.options).map(([key, val]: any) => {
                       const selected = userSelections[currentIndex] === key;
-                      let optionStyle = 'border-slate-200 bg-white hover:border-rose-200 text-slate-700 hover:bg-rose-50/20';
+                      let itemBg = '#ffffff';
+                      let itemBorder = '#e2e8f0';
+                      let itemColor = '#334155';
+                      let circleBg = '#f1f5f9';
+                      let circleColor = '#475569';
 
                       if (!isSubmitted) {
                         if (selected) {
-                          optionStyle = 'border-rose-400 bg-rose-50/50 text-rose-950 ring-2 ring-rose-300/30 font-semibold shadow-sm';
+                          itemBg = '#fff1f2';
+                          itemBorder = '#fb7185';
+                          itemColor = '#881337';
+                          circleBg = '#f43f5e';
+                          circleColor = '#ffffff';
                         }
                       } else {
                         if (key === currentQ.answer) {
-                          optionStyle = 'border-emerald-500 bg-emerald-50 text-emerald-950 font-bold shadow-sm';
+                          itemBg = '#ecfdf5';
+                          itemBorder = '#10b981';
+                          itemColor = '#064e3b';
+                          circleBg = '#10b981';
+                          circleColor = '#ffffff';
                         } else if (selected && key !== currentQ.answer) {
-                          optionStyle = 'border-rose-400 bg-rose-50 text-rose-900';
+                          itemBg = '#fff1f2';
+                          itemBorder = '#fb7185';
+                          itemColor = '#881337';
+                          circleBg = '#f43f5e';
+                          circleColor = '#ffffff';
                         }
                       }
 
@@ -333,21 +571,55 @@ export default function Home() {
                         <button
                           key={key}
                           onClick={() => handleSelectOption(key)}
-                          className={`w-full text-left p-4 rounded-2xl border text-xs md:text-sm transition-all duration-150 active:scale-[0.99] flex items-center ${optionStyle}`}
+                          style={{
+                            width: '100%',
+                            textAlign: 'left',
+                            padding: '14px 18px',
+                            borderRadius: '16px',
+                            border: `1.5px solid ${itemBorder}`,
+                            backgroundColor: itemBg,
+                            color: itemColor,
+                            cursor: isSubmitted ? 'default' : 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            fontSize: '15px',
+                            transition: 'all 0.15s ease',
+                          }}
                         >
-                          <span className={`w-7 h-7 rounded-xl mr-3 flex items-center justify-center text-xs font-bold transition-colors ${
-                            selected && !isSubmitted
-                              ? 'bg-rose-500 text-white'
-                              : 'bg-slate-100 text-slate-600'
-                          }`}>
+                          {/* 選項標籤 (A / B / C / D) */}
+                          <span
+                            style={{
+                              width: '32px',
+                              height: '32px',
+                              borderRadius: '10px',
+                              marginRight: '14px',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontSize: '14px',
+                              fontWeight: 'bold',
+                              backgroundColor: circleBg,
+                              color: circleColor,
+                              flexShrink: 0,
+                            }}
+                          >
                             {key}
                           </span>
-                          <span className="flex-1">{val}</span>
+
+                          {/* 選項文字本體 */}
+                          <span style={{ flex: 1, fontWeight: selected ? '600' : 'normal' }}>
+                            {val}
+                          </span>
+
                           {isSubmitted && key === currentQ.answer && (
-                            <span className="text-xs text-emerald-600 font-bold">✓ 正確答案</span>
+                            <span style={{ fontSize: '13px', color: '#059669', fontWeight: 'bold', marginLeft: '8px' }}>
+                              ✓ 正確答案
+                            </span>
                           )}
                           {isSubmitted && selected && key !== currentQ.answer && (
-                            <span className="text-xs text-rose-500 font-bold">✕ 寶寶選的答案</span>
+                            <span style={{ fontSize: '13px', color: '#e11d48', fontWeight: 'bold', marginLeft: '8px' }}>
+                              ✕ 寶寶選的答案
+                            </span>
                           )}
                         </button>
                       );
@@ -355,18 +627,45 @@ export default function Home() {
                   </div>
 
                   {/* 上下題切換 */}
-                  <div className="flex justify-between pt-4 border-t border-slate-100">
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      paddingTop: '16px',
+                      borderTop: '1px solid #f1f5f9',
+                    }}
+                  >
                     <button
                       onClick={() => setCurrentIndex((prev) => Math.max(0, prev - 1))}
                       disabled={currentIndex === 0}
-                      className="px-4 py-2 border border-slate-200 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-50 disabled:opacity-30 transition"
+                      style={{
+                        padding: '8px 16px',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '12px',
+                        fontSize: '13px',
+                        fontWeight: '600',
+                        color: '#475569',
+                        backgroundColor: '#ffffff',
+                        cursor: currentIndex === 0 ? 'not-allowed' : 'pointer',
+                        opacity: currentIndex === 0 ? 0.4 : 1,
+                      }}
                     >
                       ← 上一題
                     </button>
                     <button
                       onClick={() => setCurrentIndex((prev) => Math.min(totalQuestions - 1, prev + 1))}
                       disabled={currentIndex === totalQuestions - 1}
-                      className="px-4 py-2 bg-slate-800 text-white rounded-xl text-xs font-semibold hover:bg-black disabled:opacity-30 transition"
+                      style={{
+                        padding: '8px 16px',
+                        backgroundColor: '#1e293b',
+                        color: '#ffffff',
+                        border: 'none',
+                        borderRadius: '12px',
+                        fontSize: '13px',
+                        fontWeight: '600',
+                        cursor: currentIndex === totalQuestions - 1 ? 'not-allowed' : 'pointer',
+                        opacity: currentIndex === totalQuestions - 1 ? 0.4 : 1,
+                      }}
                     >
                       下一題 →
                     </button>
@@ -374,14 +673,33 @@ export default function Home() {
 
                   {/* 解析與中文翻譯 */}
                   {isSubmitted && (
-                    <div className="mt-6 p-5 bg-rose-50/40 rounded-2xl border border-rose-100 space-y-3 animate-in fade-in duration-200">
+                    <div
+                      style={{
+                        marginTop: '24px',
+                        padding: '20px',
+                        backgroundColor: '#fff1f2',
+                        borderRadius: '16px',
+                        border: '1px solid #ffe4e6',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '14px',
+                      }}
+                    >
                       <div>
-                        <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">中文翻譯</h4>
-                        <p className="text-xs md:text-sm text-slate-700 leading-relaxed">{currentQ.translation}</p>
+                        <h4 style={{ fontSize: '12px', fontWeight: 'bold', color: '#94a3b8', margin: '0 0 6px 0', letterSpacing: '0.05em' }}>
+                          中文翻譯
+                        </h4>
+                        <p style={{ fontSize: '14px', color: '#334155', lineHeight: '1.6', margin: 0 }}>
+                          {currentQ.translation}
+                        </p>
                       </div>
-                      <div className="pt-2 border-t border-rose-100">
-                        <h4 className="text-xs font-bold text-rose-500 uppercase tracking-wider mb-1">考點詳解</h4>
-                        <p className="text-xs md:text-sm text-slate-800 leading-relaxed">{currentQ.explanation}</p>
+                      <div style={{ paddingTop: '10px', borderTop: '1px solid #ffe4e6' }}>
+                        <h4 style={{ fontSize: '12px', fontWeight: 'bold', color: '#f43f5e', margin: '0 0 6px 0', letterSpacing: '0.05em' }}>
+                          考點詳解
+                        </h4>
+                        <p style={{ fontSize: '14px', color: '#1e293b', lineHeight: '1.6', margin: 0 }}>
+                          {currentQ.explanation}
+                        </p>
                       </div>
                     </div>
                   )}
@@ -391,11 +709,34 @@ export default function Home() {
           </div>
         ) : (
           !loading && (
-            <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-rose-200">
-              <p className="text-slate-500 mb-3 font-medium">題庫還沒有題目喔！</p>
+            <div
+              style={{
+                textAlign: 'center',
+                padding: '80px 20px',
+                backgroundColor: '#ffffff',
+                borderRadius: '24px',
+                border: '2px dashed #fecdd3',
+              }}
+            >
+              <p style={{ color: '#64748b', marginBottom: '14px', fontWeight: '500', fontSize: '15px' }}>
+                題庫還沒有題目喔！
+              </p>
               <button
                 onClick={handleGenerateNewSet}
-                className="px-5 py-2.5 bg-rose-500 text-white text-xs font-bold rounded-2xl hover:bg-rose-600 transition shadow flex items-center gap-1.5 mx-auto"
+                style={{
+                  padding: '10px 20px',
+                  backgroundColor: '#f43f5e',
+                  color: '#ffffff',
+                  fontSize: '13px',
+                  fontWeight: 'bold',
+                  borderRadius: '16px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  boxShadow: '0 4px 12px rgba(244, 63, 94, 0.3)',
+                }}
               >
                 <span>🧸</span>
                 <span>請熊咘咘出第一批題目</span>
