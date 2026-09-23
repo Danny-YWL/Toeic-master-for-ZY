@@ -43,32 +43,31 @@ export default function Home() {
     setCheerMsg(randomMsg);
   }, [currentIndex, isSubmitted]);
 
-  // 從題庫抽取（支援各 Part 與 50 題多益比例小模考）
+  // 從題庫抽取（支援各 Part 與 50 題多益比例小模考，0秒載入）
   async function handleReviewFromBank(partToFilter: 'Part 5' | 'Part 6' | 'Part 7' | 'Mock 50' = selectedPart) {
     setLoading(true);
     if (partToFilter === 'Mock 50') {
       setLoadingText('熊咘咘正在組裝【50 題多益比重全真小模擬考】... 🎯🐾');
     } else {
-      setLoadingText(`熊咘咘正在翻【${partToFilter}】題庫... 🐾`);
+      setLoadingText(`熊咘咘正在挑選【${partToFilter}】題目... 🐾`);
     }
 
     try {
       if (partToFilter === 'Mock 50') {
-        // 抓取全部題庫來進行多益比重抽取 (Part 5: 15題, Part 6: 8題, Part 7: 27題)
         const { data: allData, error } = await supabase.from('questions').select('*');
         if (error) throw error;
         if (!allData || allData.length === 0) {
-          alert('題庫目前還是空的，先請熊咘咘出題吧！ 🧸');
+          alert('題庫目前還是空的！ 🧸');
           setLoading(false);
           return;
         }
 
-        // 1. Part 5: 隨機挑 15 題
+        // 1. Part 5: 隨機挑 15 題 (30%)
         const p5All = allData.filter((q) => q.part === 'Part 5');
         const p5Shuffled = [...p5All].sort(() => 0.5 - Math.random());
         const p5Selected = p5Shuffled.slice(0, 15);
 
-        // 2. Part 6: 依文章題組分組，隨機抽 2 篇 (剛好 8 題)
+        // 2. Part 6: 隨機抽 2 篇題組 (8 題，16%)
         const p6All = allData.filter((q) => q.part === 'Part 6');
         const p6Map = new Map<string, any[]>();
         p6All.forEach((q) => {
@@ -79,7 +78,7 @@ export default function Home() {
         const p6Articles = Array.from(p6Map.values()).sort(() => 0.5 - Math.random());
         const p6Selected = p6Articles.slice(0, 2).flat();
 
-        // 3. Part 7: 依文章題組分組，隨機抽文章湊足 27 題
+        // 3. Part 7: 隨機抽文章湊足 27 題 (54%)
         const p7All = allData.filter((q) => q.part === 'Part 7');
         const p7Map = new Map<string, any[]>();
         p7All.forEach((q) => {
@@ -113,7 +112,7 @@ export default function Home() {
         if (error) throw error;
 
         if (!data || data.length === 0) {
-          alert(`${partToFilter} 題庫目前還是空的，先請熊咘咘出新題目吧！ 🧸`);
+          alert(`${partToFilter} 題庫目前沒有題目喔！ 🧸`);
           setLoading(false);
           return;
         }
@@ -144,42 +143,7 @@ export default function Home() {
         setIsSubmitted(false);
       }
     } catch (e: any) {
-      alert('翻題庫有點卡卡，再試一次看看～');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  // AI 出新題組
-  async function handleGenerateNewSet() {
-    setLoading(true);
-    const targetPart = selectedPart === 'Mock 50' ? 'Part 5' : selectedPart;
-    const targetName =
-      targetPart === 'Part 5'
-        ? '5 題單句填空'
-        : targetPart === 'Part 6'
-        ? '1篇段落填空(4題)'
-        : '1篇閱讀理解(3題)';
-    setLoadingText(`熊咘咘正在極速生成【${targetName}】，請稍候 3~5 秒... 🧸⚡`);
-
-    try {
-      const res = await fetch('/api/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ part: targetPart }),
-      });
-
-      const result = await res.json();
-      if (!res.ok || !result.data || result.data.length === 0) {
-        throw new Error(result.error || '生成失敗');
-      }
-
-      setQuestions(result.data);
-      setCurrentIndex(0);
-      setUserSelections({});
-      setIsSubmitted(false);
-    } catch (e: any) {
-      alert(`出題遇到狀況（${e.message}），請再點一次試試看！ 🐾`);
+      alert('讀取題庫有點卡卡，再試一次看看～');
     } finally {
       setLoading(false);
     }
@@ -375,7 +339,7 @@ export default function Home() {
             </p>
           </div>
 
-          {/* 題型切換（含 50 題小模考） */}
+          {/* 題型切換 */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
             {(['Part 5', 'Part 6', 'Part 7', 'Mock 50'] as const).map((part) => (
               <button
@@ -406,11 +370,12 @@ export default function Home() {
             ))}
           </div>
 
+          {/* 頂部操作按鈕（僅保留 歷次紀錄 與 隨機換題） */}
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             <button
               onClick={fetchHistory}
               style={{
-                padding: '9px 13px',
+                padding: '10px 14px',
                 backgroundColor: '#f1f5f9',
                 color: '#1e293b',
                 fontSize: '12px',
@@ -426,27 +391,10 @@ export default function Home() {
               onClick={() => handleReviewFromBank(selectedPart)}
               disabled={loading}
               style={{
-                padding: '9px 13px',
-                backgroundColor: '#1e293b',
-                color: '#ffffff',
-                fontSize: '12px',
-                fontWeight: 'bold',
-                borderRadius: '14px',
-                border: 'none',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                opacity: loading ? 0.6 : 1,
-              }}
-            >
-              📚 題庫抽題
-            </button>
-            <button
-              onClick={handleGenerateNewSet}
-              disabled={loading}
-              style={{
-                padding: '9px 13px',
+                padding: '10px 16px',
                 backgroundColor: '#f43f5e',
                 color: '#ffffff',
-                fontSize: '12px',
+                fontSize: '13px',
                 fontWeight: 'bold',
                 borderRadius: '14px',
                 border: 'none',
@@ -455,7 +403,7 @@ export default function Home() {
                 boxShadow: '0 4px 10px rgba(244, 63, 94, 0.25)',
               }}
             >
-              ⚡ 熊咘咘秒出題組
+              🎲 隨機換一組題
             </button>
           </div>
         </header>
@@ -512,7 +460,7 @@ export default function Home() {
                 </div>
               </div>
 
-              {/* 題號按鈕格（依需求升級：已作答變綠色、當前題特別深框標記） */}
+              {/* 題號按鈕格（已作答柔和綠、當前題深黑加粗外框） */}
               <div
                 style={{
                   display: 'grid',
@@ -531,20 +479,19 @@ export default function Home() {
                   const isCorrect = isSubmitted && selectedKey === q.answer;
                   const isWrong = isSubmitted && isAnswered && !isCorrect;
 
-                  // 預設未作答狀態
                   let bgColor = '#ffffff';
                   let borderColor = '#cbd5e1';
                   let textColor = '#0f172a';
                   let boxShadow = 'none';
 
-                  // 1. 已作答：變成柔和綠色底
+                  // 1. 已作答：柔和綠色底
                   if (isAnswered) {
                     bgColor = '#ecfdf5';
                     borderColor = '#a7f3d0';
                     textColor = '#065f46';
                   }
 
-                  // 2. 當前正在作答的那一題：以顯眼的深藍黑色粗邊框與發光陰影標記出來
+                  // 2. 當前題：深黑粗外框
                   if (isCurrent) {
                     borderColor = '#1e293b';
                     boxShadow = '0 0 0 2.5px #1e293b';
@@ -553,7 +500,7 @@ export default function Home() {
                     }
                   }
 
-                  // 3. 交卷後：依正解/錯誤著色
+                  // 3. 交卷後判定
                   if (isSubmitted) {
                     if (isCorrect) {
                       bgColor = '#ecfdf5';
@@ -586,7 +533,6 @@ export default function Home() {
                       }}
                     >
                       {idx + 1}
-                      {/* 右上角保持顯示所選的答案 */}
                       {isAnswered && (
                         <span
                           style={{
@@ -863,22 +809,7 @@ export default function Home() {
                 border: '2px dashed #fecdd3',
               }}
             >
-              <p style={{ color: '#64748b', marginBottom: '14px' }}>目前還沒有題組喔！</p>
-              <button
-                onClick={handleGenerateNewSet}
-                style={{
-                  padding: '10px 20px',
-                  backgroundColor: '#f43f5e',
-                  color: '#ffffff',
-                  fontSize: '13px',
-                  fontWeight: 'bold',
-                  borderRadius: '14px',
-                  border: 'none',
-                  cursor: 'pointer',
-                }}
-              >
-                🧸 請熊咘咘出題組
-              </button>
+              <p style={{ color: '#64748b', marginBottom: '14px' }}>目前沒有題組喔！</p>
             </div>
           )
         )}
