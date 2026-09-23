@@ -16,7 +16,7 @@ export async function POST(req: Request) {
 
     if (part === 'Part 5') {
       systemInstruction = '你是一位專業的多益考官。請出一組 Part 5 單句填空。輸出必須是標準 JSON Array。';
-      prompt = `請出 5 題【TOEIC Part 5 單句填空】，涵蓋常考文法（詞性、時態、連接詞）。
+      prompt = `請出 5 題【TOEIC Part 5 單句填空】，難度對標多益 750-850 分。包含純單字辨析與詞性時態。
 格式要求為標準 JSON Array：
 [
   {
@@ -32,7 +32,7 @@ export async function POST(req: Request) {
 ]`;
     } else if (part === 'Part 6') {
       systemInstruction = '你是一位專業的多益考官。請出一個標準的 Part 6 題組（1篇短文含4個空格題）。輸出必須是標準 JSON Array。';
-      prompt = `請設計 1 篇多益【Part 6 段落填空】題組，文章長度約 80-120 字（商務信件或公告），文章內挖出 [1], [2], [3], [4] 四個空格。
+      prompt = `請設計 1 篇多益【Part 6 段落填空】題組，文章約 100 字（商務信函或公告），含 [1], [2], [3], [4] 四個空格。
 輸出 4 個題目的 JSON Array，每個題目的 context 欄位都放同一篇完整文章：
 [
   {
@@ -48,7 +48,7 @@ export async function POST(req: Request) {
 ]`;
     } else {
       systemInstruction = '你是一位專業的多益考官。請出一個標準的 Part 7 單篇閱讀題組（1篇文章搭配3題單選）。輸出必須是標準 JSON Array。';
-      prompt = `請設計 1 篇多益【Part 7 閱讀理解】短篇題組，文章長度約 90-130 字（商務 Memo、短 Email 或產品活動公告），並針對文章出 3 題單選題。
+      prompt = `請設計 1 篇多益【Part 7 閱讀理解】短篇題組，文章約 100-130 字（商務 Memo、Email 或公告），並針對文章出 3 題單選題。
 輸出 3 個題目的 JSON Array，每個題目的 context 欄位放同一篇完整文章：
 [
   {
@@ -66,7 +66,7 @@ export async function POST(req: Request) {
 
     let parsedQuestions: any[] = [];
 
-    // 優先順序 1：若有設定 OpenAI API Key，優先走 OpenAI（極速且不易撞頻率限制）
+    // 通道 1：OpenAI（若有設定金鑰）
     if (openAiKey) {
       try {
         const response = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -96,10 +96,9 @@ export async function POST(req: Request) {
       }
     }
 
-    // 優先順序 2：Gemini 模型池輪替（自動容錯 429 限速）
+    // 通道 2：Gemini 模型池（依序嘗試 3.6-flash 與 2.5-flash）
     if (parsedQuestions.length === 0 && geminiKey) {
-      // 依序嘗試不同型號，若某一型號 429 則自動嘗試下一個
-      const geminiCandidateModels = ['gemini-2.5-flash', 'gemini-1.5-flash', 'gemini-2.0-flash'];
+      const geminiCandidateModels = ['gemini-3.6-flash', 'gemini-2.5-flash'];
 
       for (const model of geminiCandidateModels) {
         try {
@@ -117,13 +116,7 @@ export async function POST(req: Request) {
           });
 
           if (!response.ok) {
-            const errRes = await response.json().catch(() => null);
-            // 若為 429 或 404，繼續嘗試下一個模型
-            if (response.status === 429 || response.status === 404) {
-              console.warn(`模型 ${model} 遇到 ${response.status}，嘗試下一個備用模型...`);
-              continue;
-            }
-            throw new Error(errRes?.error?.message || `API 錯誤代碼 ${response.status}`);
+            continue; // 若該模型 404 或 429 則嘗試下一個
           }
 
           const raw = await response.json();
@@ -133,7 +126,7 @@ export async function POST(req: Request) {
           parsedQuestions = Array.isArray(jsonRes) ? jsonRes : jsonRes.questions || Object.values(jsonRes)[0];
 
           if (Array.isArray(parsedQuestions) && parsedQuestions.length > 0) {
-            break; // 成功取得題目，跳出輪替迴圈
+            break;
           }
         } catch (e: any) {
           console.warn(`嘗試 ${model} 失敗:`, e.message);
@@ -141,15 +134,13 @@ export async function POST(req: Request) {
       }
     }
 
-    // 若全部模型都因限速無法回應
     if (!Array.isArray(parsedQuestions) || parsedQuestions.length === 0) {
       return NextResponse.json(
-        { error: '熊咘咘出題太勤奮撞到免費額度上限囉！請稍等 1 分鐘再點，或先點「📚 題庫抽題」複習累積的題目！🐾' },
+        { error: 'AI 出題遇到頻率限制，請稍候 30 秒再點，或先使用「📚 題庫抽題」複習！🐾' },
         { status: 429 }
       );
     }
 
-    // 存入題庫資料庫
     const records = parsedQuestions.map((q: any) => ({
       part: q.part || part,
       topic: q.topic || '閱讀測驗',
