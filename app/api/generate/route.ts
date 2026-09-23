@@ -88,8 +88,8 @@ export async function POST(req: Request) {
       const jsonRes = JSON.parse(cleaned);
       parsedQuestions = Array.isArray(jsonRes) ? jsonRes : jsonRes.questions || Object.values(jsonRes)[0];
     } else if (geminiKey) {
-      // 使用正確支援的 gemini-2.0-flash 模型
-      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`;
+      // 依照官方提示更新為 gemini-3.6-flash
+      const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${geminiKey}`;
       const response = await fetch(geminiUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
