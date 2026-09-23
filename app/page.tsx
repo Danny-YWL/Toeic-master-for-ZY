@@ -43,7 +43,7 @@ export default function Home() {
     setCheerMsg(randomMsg);
   }, [currentIndex, isSubmitted]);
 
-  // 從題庫抽取（已修復：真隨機挑選題組與題目）
+  // 從題庫抽取（真隨機挑選題組與題目）
   async function handleReviewFromBank(partToFilter = selectedPart) {
     setLoading(true);
     setLoadingText(`熊咘咘正在翻【${partToFilter}】題庫... 🐾`);
@@ -64,11 +64,11 @@ export default function Home() {
       let selectedQuestions: any[] = [];
 
       if (partToFilter === 'Part 5') {
-        // Part 5：真正隨機打亂並取 5 題
+        // Part 5：隨機打亂並取 5 題
         const shuffled = [...data].sort(() => 0.5 - Math.random());
         selectedQuestions = shuffled.slice(0, 5);
       } else {
-        // Part 6 或 Part 7：按 context (文章) 分組，隨機挑選「其中一整組題組」
+        // Part 6 或 Part 7：按 context (文章) 分組，隨機挑選其中一整組題組
         const contextMap = new Map<string, any[]>();
         data.forEach((q) => {
           const key = q.context || 'general';
@@ -79,7 +79,6 @@ export default function Home() {
         });
 
         const allArticles = Array.from(contextMap.values());
-        // 隨機抽出一篇完整文章的題目
         const randomArticle = allArticles[Math.floor(Math.random() * allArticles.length)];
         selectedQuestions = randomArticle || [];
       }
@@ -245,26 +244,31 @@ export default function Home() {
     }
   }
 
-  // 刪除單場次紀錄功能
+  // 刪除單場次紀錄功能（含資料庫實際刪除驗證）
   async function handleDeleteSession(e: React.MouseEvent, session: ExamSession) {
     e.stopPropagation();
     const confirmDelete = window.confirm(`確定要刪除 ${session.dateStr}（${session.part}）的作答紀錄嗎？`);
     if (!confirmDelete) return;
 
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('user_answers')
         .delete()
-        .in('id', session.recordIds);
+        .in('id', session.recordIds)
+        .select();
 
       if (error) throw error;
+
+      if (!data || data.length === 0) {
+        throw new Error('資料庫拒絕刪除，請確認 Supabase 是否已新增 DELETE 政策！');
+      }
 
       setExamSessions((prev) => prev.filter((s) => s.sessionId !== session.sessionId));
       if (selectedSession?.sessionId === session.sessionId) {
         setSelectedSession(null);
       }
     } catch (err: any) {
-      alert('刪除失敗，請稍候再試！');
+      alert(`刪除失敗：${err.message}`);
     }
   }
 
