@@ -502,22 +502,23 @@ export default function Home() {
     }
   }
 
-  // 🎨 無色階「全平純暗黑（Seamless Flat Dark）」配色方案
+  // 🎨 辦公室極致低調消光字體調色（深色模式：中低對比霧面冷灰，字體不發光）
   const theme = {
-    // 深色模式下：整體底色與卡片底色完全合一（#090d16），抹除所有卡片凸出色階
     bg: isDarkMode ? '#090d16' : currentUser === '寶寶' ? '#fff1f2' : '#f0fdf4',
     cardBg: isDarkMode ? '#090d16' : '#ffffff',
     cardBorder: isDarkMode ? '#131b2a' : currentUser === '寶寶' ? '#ffe4e6' : '#bbf7d0',
-    textMain: isDarkMode ? '#cbd5e1' : '#0f172a',
-    textMuted: isDarkMode ? '#475569' : '#64748b',
+
+    // ★ 關鍵調整：深色字體改為 #8b9bb4（中等暗冷灰），既看得清又完全不亮
+    textMain: isDarkMode ? '#8b9bb4' : '#0f172a',
+    textMuted: isDarkMode ? '#536173' : '#64748b',
     contextBg: isDarkMode ? '#0d131f' : '#f8fafc',
-    contextText: isDarkMode ? '#94a3b8' : '#0f172a',
+    contextText: isDarkMode ? '#717f94' : '#0f172a',
     btnDefaultBg: isDarkMode ? '#0d131f' : '#ffffff',
     btnDefaultBorder: isDarkMode ? '#172033' : '#cbd5e1',
 
-    // 使用者標籤（深色模式：微弱深灰 #172033，文字為灰白 #94a3b8，完全不顯眼）
+    // 使用者標籤（深色模式：深冷灰無彩度）
     userActiveBg: isDarkMode
-      ? '#1a2337'
+      ? '#172033'
       : currentUser === '寶寶' ? '#f43f5e' : '#059669',
     userBadgeBg: isDarkMode
       ? '#0d131f'
@@ -526,13 +527,13 @@ export default function Home() {
       ? '#172033'
       : currentUser === '寶寶' ? '#ffe4e6' : '#bbf7d0',
     userBadgeText: isDarkMode
-      ? '#94a3b8'
+      ? '#717f94'
       : currentUser === '寶寶' ? '#e11d48' : '#047857',
     cheerText: isDarkMode
-      ? '#475569'
+      ? '#536173'
       : currentUser === '寶寶' ? '#f43f5e' : '#10b981',
 
-    // 題型選中按鈕（深色模式：與底色微差的 #131a2a，邊框僅微灰 #1e293b）
+    // 題型選中按鈕
     partActiveBg: isDarkMode
       ? '#131a2a'
       : currentUser === '寶寶' ? '#ffe4e6' : '#dcfce7',
@@ -540,24 +541,24 @@ export default function Home() {
       ? '#1e293b'
       : currentUser === '寶寶' ? '#f43f5e' : '#10b981',
     partActiveText: isDarkMode
-      ? '#cbd5e1'
+      ? '#8b9bb4'
       : currentUser === '寶寶' ? '#e11d48' : '#047857',
 
-    // 作答選項選中顏色（深色模式：微深灰 #131a2a，外框微深灰 #1e293b，完全不刺眼）
+    // 作答選項選中顏色
     selectedOptionBg: isDarkMode
       ? '#131a2a'
       : currentUser === '寶寶' ? '#fff1f2' : '#f0fdf4',
     selectedOptionBorder: isDarkMode
-      ? '#334155'
+      ? '#263449'
       : currentUser === '寶寶' ? '#fb7185' : '#34d399',
 
-    // 答對 / 答錯結果樣式（深色模式：暗調碳黑灰，無霓虹光）
+    // 答對 / 答錯結果樣式
     correctBg: isDarkMode ? '#091512' : '#ecfdf5',
     correctBorder: isDarkMode ? '#132e23' : '#10b981',
-    correctText: isDarkMode ? '#6ee7b7' : '#065f46',
+    correctText: isDarkMode ? '#4ade80' : '#065f46',
     wrongBg: isDarkMode ? '#170c10' : '#fff1f2',
     wrongBorder: isDarkMode ? '#2b1219' : '#fb7185',
-    wrongText: isDarkMode ? '#fca5a5' : '#9f1239',
+    wrongText: isDarkMode ? '#f87171' : '#9f1239',
   };
 
   const currentQ = questions[currentIndex];
@@ -624,7 +625,7 @@ export default function Home() {
                     border: 'none',
                     cursor: 'pointer',
                     backgroundColor: currentUser === '寶寶' ? theme.userActiveBg : 'transparent',
-                    color: currentUser === '寶寶' ? (isDarkMode ? '#cbd5e1' : '#ffffff') : theme.textMuted,
+                    color: currentUser === '寶寶' ? (isDarkMode ? '#8b9bb4' : '#ffffff') : theme.textMuted,
                     transition: 'all 0.2s',
                   }}
                 >
@@ -641,7 +642,7 @@ export default function Home() {
                     border: 'none',
                     cursor: 'pointer',
                     backgroundColor: currentUser === '熊熊' ? theme.userActiveBg : 'transparent',
-                    color: currentUser === '熊熊' ? (isDarkMode ? '#cbd5e1' : '#ffffff') : theme.textMuted,
+                    color: currentUser === '熊熊' ? (isDarkMode ? '#8b9bb4' : '#ffffff') : theme.textMuted,
                     transition: 'all 0.2s',
                   }}
                 >
@@ -672,9 +673,9 @@ export default function Home() {
                 fontSize: '13px',
                 fontWeight: 'bold',
                 cursor: 'pointer',
-                border: currentTab === 'practice' ? (isDarkMode ? '1px solid #334155' : '2px solid #1e293b') : `1px solid ${theme.btnDefaultBorder}`,
+                border: currentTab === 'practice' ? (isDarkMode ? '1px solid #263449' : '2px solid #1e293b') : `1px solid ${theme.btnDefaultBorder}`,
                 backgroundColor: currentTab === 'practice' ? (isDarkMode ? '#172033' : '#1e293b') : theme.cardBg,
-                color: isDarkMode ? '#cbd5e1' : '#ffffff',
+                color: isDarkMode ? '#8b9bb4' : '#ffffff',
               }}
             >
               ✍️ 實戰做題
@@ -687,9 +688,9 @@ export default function Home() {
                 fontSize: '13px',
                 fontWeight: 'bold',
                 cursor: 'pointer',
-                border: currentTab === 'dashboard' ? (isDarkMode ? '1px solid #334155' : '2px solid #6366f1') : `1px solid ${theme.btnDefaultBorder}`,
+                border: currentTab === 'dashboard' ? (isDarkMode ? '1px solid #263449' : '2px solid #6366f1') : `1px solid ${theme.btnDefaultBorder}`,
                 backgroundColor: currentTab === 'dashboard' ? (isDarkMode ? '#131b2a' : '#6366f1') : theme.cardBg,
-                color: currentTab === 'dashboard' ? (isDarkMode ? '#cbd5e1' : '#ffffff') : isDarkMode ? '#64748b' : '#6366f1',
+                color: currentTab === 'dashboard' ? (isDarkMode ? '#8b9bb4' : '#ffffff') : isDarkMode ? '#536173' : '#6366f1',
               }}
             >
               📈 弱點 Dashboard
@@ -736,7 +737,7 @@ export default function Home() {
                     <div style={{ fontSize: '28px', fontWeight: '900', color: theme.textMain, marginTop: '6px' }}>
                       {analyticsData.totalAnswered} <span style={{ fontSize: '14px', fontWeight: 'normal', color: theme.textMuted }}>題</span>
                     </div>
-                    <span style={{ fontSize: '12px', color: isDarkMode ? '#64748b' : '#10b981', fontWeight: 'bold' }}>
+                    <span style={{ fontSize: '12px', color: isDarkMode ? '#536173' : '#10b981', fontWeight: 'bold' }}>
                       歷史總答對率：{analyticsData.accuracy}%
                     </span>
                   </div>
@@ -745,7 +746,7 @@ export default function Home() {
                     <span style={{ fontSize: '13px', color: theme.textMuted, fontWeight: 'bold' }}>
                       🔥 近 {analyticsData.recent50Count} 題真實命中率
                     </span>
-                    <div style={{ fontSize: '28px', fontWeight: '900', color: isDarkMode ? '#cbd5e1' : (analyticsData.recent50Accuracy >= 80 ? '#10b981' : '#f43f5e'), marginTop: '6px' }}>
+                    <div style={{ fontSize: '28px', fontWeight: '900', color: isDarkMode ? '#8b9bb4' : (analyticsData.recent50Accuracy >= 80 ? '#10b981' : '#f43f5e'), marginTop: '6px' }}>
                       {analyticsData.recent50Accuracy}%
                     </div>
                     <span style={{ fontSize: '12px', color: theme.textMuted }}>
@@ -754,11 +755,11 @@ export default function Home() {
                   </div>
 
                   <div style={{ padding: '20px', borderRadius: '20px', border: `1px solid ${isDarkMode ? '#1e293b' : '#818cf8'}`, backgroundColor: isDarkMode ? '#0d131f' : '#f5f3ff' }}>
-                    <span style={{ fontSize: '13px', color: isDarkMode ? '#64748b' : '#4338ca', fontWeight: 'bold' }}>🎯 多益閱讀預估落點 (依近50題)</span>
-                    <div style={{ fontSize: '20px', fontWeight: '900', color: isDarkMode ? '#cbd5e1' : '#4338ca', marginTop: '6px' }}>
+                    <span style={{ fontSize: '13px', color: isDarkMode ? '#717f94' : '#4338ca', fontWeight: 'bold' }}>🎯 多益閱讀預估落點 (依近50題)</span>
+                    <div style={{ fontSize: '20px', fontWeight: '900', color: isDarkMode ? '#8b9bb4' : '#4338ca', marginTop: '6px' }}>
                       {analyticsData.estimatedScore}
                     </div>
-                    <span style={{ fontSize: '12px', color: isDarkMode ? '#475569' : '#6366f1' }}>
+                    <span style={{ fontSize: '12px', color: isDarkMode ? '#536173' : '#6366f1' }}>
                       以最近 50 題常模推算（滿分 495）
                     </span>
                   </div>
@@ -781,7 +782,7 @@ export default function Home() {
                       style={{
                         padding: '10px 18px',
                         backgroundColor: isDarkMode ? '#172033' : '#ef4444',
-                        color: isDarkMode ? '#94a3b8' : '#ffffff',
+                        color: isDarkMode ? '#8b9bb4' : '#ffffff',
                         border: isDarkMode ? '1px solid #1e293b' : 'none',
                         borderRadius: '14px',
                         fontSize: '13px',
@@ -819,12 +820,12 @@ export default function Home() {
                                   {item.topic}
                                 </span>
                                 {isWarning && (
-                                  <span style={{ fontSize: '11px', fontWeight: 'bold', backgroundColor: isDarkMode ? '#1e293b' : '#f43f5e', color: isDarkMode ? '#94a3b8' : '#ffffff', padding: '2px 8px', borderRadius: '9999px' }}>
+                                  <span style={{ fontSize: '11px', fontWeight: 'bold', backgroundColor: isDarkMode ? '#1e293b' : '#f43f5e', color: isDarkMode ? '#8b9bb4' : '#ffffff', padding: '2px 8px', borderRadius: '9999px' }}>
                                     ⚠️ 優先加強弱點
                                   </span>
                                 )}
                               </div>
-                              <span style={{ fontSize: '13px', fontWeight: 'bold', color: isDarkMode ? '#94a3b8' : (item.rate >= 80 ? '#10b981' : item.rate >= 60 ? '#f59e0b' : '#ef4444') }}>
+                              <span style={{ fontSize: '13px', fontWeight: 'bold', color: isDarkMode ? '#8b9bb4' : (item.rate >= 80 ? '#10b981' : item.rate >= 60 ? '#f59e0b' : '#ef4444') }}>
                                 {item.correct} / {item.total} 題 ({item.rate}%)
                               </span>
                             </div>
@@ -834,7 +835,7 @@ export default function Home() {
                                 style={{
                                   height: '100%',
                                   width: `${item.rate}%`,
-                                  backgroundColor: isDarkMode ? '#334155' : (item.rate >= 80 ? '#10b981' : item.rate >= 60 ? '#f59e0b' : '#ef4444'),
+                                  backgroundColor: isDarkMode ? '#263449' : (item.rate >= 80 ? '#10b981' : item.rate >= 60 ? '#f59e0b' : '#ef4444'),
                                   transition: 'width 0.4s ease',
                                 }}
                               />
@@ -922,7 +923,7 @@ export default function Home() {
                   style={{
                     padding: '8px 14px',
                     backgroundColor: theme.userActiveBg,
-                    color: isDarkMode ? '#cbd5e1' : '#ffffff',
+                    color: isDarkMode ? '#8b9bb4' : '#ffffff',
                     border: isDarkMode ? '1px solid #1e293b' : 'none',
                     fontSize: '12px',
                     fontWeight: 'bold',
@@ -978,7 +979,7 @@ export default function Home() {
                     <div style={{ width: '100%', backgroundColor: isDarkMode ? '#0d131f' : '#f1f5f9', height: '6px', borderRadius: '9999px', overflow: 'hidden' }}>
                       <div
                         style={{
-                          backgroundColor: isDarkMode ? '#334155' : currentUser === '寶寶' ? '#fb7185' : '#34d399',
+                          backgroundColor: isDarkMode ? '#263449' : currentUser === '寶寶' ? '#fb7185' : '#34d399',
                           height: '100%',
                           width: `${progressPercent}%`,
                           transition: 'width 0.3s ease',
@@ -1013,13 +1014,13 @@ export default function Home() {
 
                       if (isAnswered) {
                         bgColor = isDarkMode ? '#0d131f' : '#ecfdf5';
-                        borderColor = isDarkMode ? '#334155' : '#10b981';
-                        textColor = isDarkMode ? '#cbd5e1' : '#065f46';
+                        borderColor = isDarkMode ? '#263449' : '#10b981';
+                        textColor = isDarkMode ? '#8b9bb4' : '#065f46';
                       }
 
                       if (isCurrent) {
-                        borderColor = isDarkMode ? '#64748b' : '#1e293b';
-                        boxShadow = isDarkMode ? '0 0 0 1px #64748b' : '0 0 0 2.5px #1e293b';
+                        borderColor = isDarkMode ? '#475569' : '#1e293b';
+                        boxShadow = isDarkMode ? '0 0 0 1px #475569' : '0 0 0 2.5px #1e293b';
                         if (!isAnswered) bgColor = isDarkMode ? '#0d131f' : '#f8fafc';
                       }
 
@@ -1045,7 +1046,7 @@ export default function Home() {
                             position: 'relative',
                             height: '42px',
                             borderRadius: '12px',
-                            border: `1px solid ${borderColor}`,
+                            border: `1.5px solid ${borderColor}`,
                             backgroundColor: bgColor,
                             color: textColor,
                             fontWeight: 'bold',
@@ -1064,8 +1065,8 @@ export default function Home() {
                                 position: 'absolute',
                                 top: '-5px',
                                 right: '-5px',
-                                backgroundColor: isDarkMode ? '#334155' : theme.userActiveBg,
-                                color: isDarkMode ? '#94a3b8' : '#ffffff',
+                                backgroundColor: isDarkMode ? '#1e293b' : theme.userActiveBg,
+                                color: isDarkMode ? '#717f94' : '#ffffff',
                                 fontWeight: 'bold',
                               }}
                             >
@@ -1084,7 +1085,7 @@ export default function Home() {
                         width: '100%',
                         padding: '12px',
                         backgroundColor: theme.userActiveBg,
-                        color: isDarkMode ? '#cbd5e1' : '#ffffff',
+                        color: isDarkMode ? '#8b9bb4' : '#ffffff',
                         border: isDarkMode ? '1px solid #1e293b' : 'none',
                         fontSize: '13px',
                         fontWeight: 'bold',
@@ -1199,7 +1200,7 @@ export default function Home() {
                                 textAlign: 'left',
                                 padding: '12px 16px',
                                 borderRadius: '14px',
-                                border: `1px solid ${itemBorder}`,
+                                border: `1.5px solid ${itemBorder}`,
                                 backgroundColor: itemBg,
                                 color: theme.textMain,
                                 cursor: isSubmitted ? 'default' : 'pointer',
@@ -1220,8 +1221,8 @@ export default function Home() {
                                   justifyContent: 'center',
                                   fontSize: '13px',
                                   fontWeight: 'bold',
-                                  backgroundColor: selected ? (isDarkMode ? '#334155' : theme.userActiveBg) : (isDarkMode ? '#0d131f' : '#f1f5f9'),
-                                  color: selected ? (isDarkMode ? '#cbd5e1' : '#ffffff') : theme.textMain,
+                                  backgroundColor: selected ? (isDarkMode ? '#263449' : theme.userActiveBg) : (isDarkMode ? '#0d131f' : '#f1f5f9'),
+                                  color: selected ? (isDarkMode ? '#8b9bb4' : '#ffffff') : theme.textMain,
                                   flexShrink: 0,
                                 }}
                               >
@@ -1237,7 +1238,7 @@ export default function Home() {
                                 {val}
                               </span>
                               {isSubmitted && key === currentQ.answer && (
-                                <span style={{ fontSize: '13px', color: isDarkMode ? '#6ee7b7' : '#10b981', fontWeight: 'bold' }}>✓ 正解</span>
+                                <span style={{ fontSize: '13px', color: isDarkMode ? '#4ade80' : '#10b981', fontWeight: 'bold' }}>✓ 正解</span>
                               )}
                             </button>
                           );
@@ -1275,7 +1276,7 @@ export default function Home() {
                           style={{
                             padding: '8px 14px',
                             backgroundColor: isDarkMode ? '#172033' : '#0f172a',
-                            color: isDarkMode ? '#cbd5e1' : '#ffffff',
+                            color: isDarkMode ? '#8b9bb4' : '#ffffff',
                             border: isDarkMode ? '1px solid #1e293b' : 'none',
                             borderRadius: '10px',
                             fontSize: '13px',
@@ -1481,7 +1482,7 @@ export default function Home() {
                                 style={{
                                   fontSize: '12px',
                                   fontWeight: 'bold',
-                                  color: isDarkMode ? '#94a3b8' : (session.accuracy >= 70 ? '#10b981' : '#f43f5e'),
+                                  color: isDarkMode ? '#717f94' : (session.accuracy >= 70 ? '#10b981' : '#f43f5e'),
                                 }}
                               >
                                 答對率 {session.accuracy}%
@@ -1496,7 +1497,7 @@ export default function Home() {
                                 padding: '6px 10px',
                                 backgroundColor: theme.cardBg,
                                 border: `1px solid ${theme.btnDefaultBorder}`,
-                                color: isDarkMode ? '#64748b' : '#ef4444',
+                                color: isDarkMode ? '#536173' : '#ef4444',
                                 borderRadius: '10px',
                                 fontSize: '12px',
                                 fontWeight: 'bold',
@@ -1533,7 +1534,7 @@ export default function Home() {
                           padding: '4px 10px',
                           backgroundColor: theme.cardBg,
                           border: `1px solid ${theme.btnDefaultBorder}`,
-                          color: isDarkMode ? '#64748b' : '#e11d48',
+                          color: isDarkMode ? '#536173' : '#e11d48',
                           borderRadius: '8px',
                           fontSize: '11px',
                           fontWeight: 'bold',
@@ -1559,7 +1560,7 @@ export default function Home() {
                           style={{
                             padding: '16px',
                             borderRadius: '16px',
-                            border: `1px solid ${isCorrect ? theme.correctBorder : theme.wrongBorder}`,
+                            border: `1.5px solid ${isCorrect ? theme.correctBorder : theme.wrongBorder}`,
                             backgroundColor: isCorrect ? theme.correctBg : theme.wrongBg,
                           }}
                         >
@@ -1571,7 +1572,7 @@ export default function Home() {
                                 padding: '2px 8px',
                                 borderRadius: '9999px',
                                 backgroundColor: isDarkMode ? '#090d16' : (isCorrect ? '#d1fae5' : '#ffe4e6'),
-                                color: isCorrect ? (isDarkMode ? '#6ee7b7' : '#065f46') : (isDarkMode ? '#fca5a5' : '#9f1239'),
+                                color: isCorrect ? (isDarkMode ? '#4ade80' : '#065f46') : (isDarkMode ? '#f87171' : '#9f1239'),
                               }}
                             >
                               第 {idx + 1} 題 · {isCorrect ? '✓ 答對' : '✕ 答錯'}
@@ -1600,13 +1601,13 @@ export default function Home() {
                                   optBorder = theme.correctBorder;
                                   tagText = '✓ 正解';
                                   tagBg = isDarkMode ? '#132e23' : '#10b981';
-                                  tagColor = isDarkMode ? '#6ee7b7' : '#ffffff';
+                                  tagColor = isDarkMode ? '#4ade80' : '#ffffff';
                                 } else if (isUserPick && !isCorrect) {
                                   optBg = theme.wrongBg;
                                   optBorder = theme.wrongBorder;
                                   tagText = `✕ ${currentUser === '寶寶' ? '🐣 寶寶' : '🐻 熊熊'}選這個`;
                                   tagBg = isDarkMode ? '#2b1219' : '#f43f5e';
-                                  tagColor = isDarkMode ? '#fca5a5' : '#ffffff';
+                                  tagColor = isDarkMode ? '#f87171' : '#ffffff';
                                 }
 
                                 return (
@@ -1615,7 +1616,7 @@ export default function Home() {
                                     style={{
                                       padding: '8px 12px',
                                       borderRadius: '10px',
-                                      border: `1px solid ${optBorder}`,
+                                      border: `1.5px solid ${optBorder}`,
                                       backgroundColor: optBg,
                                       display: 'flex',
                                       alignItems: 'center',
