@@ -35,6 +35,7 @@ interface ExamSession {
 export default function Home() {
   const [currentUser, setCurrentUser] = useState<'寶寶' | '熊熊'>('寶寶');
   const [currentTab, setCurrentTab] = useState<'practice' | 'dashboard'>('practice');
+  const [isDarkMode, setIsDarkMode] = useState(false);
 
   const [questions, setQuestions] = useState<any[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -51,7 +52,7 @@ export default function Home() {
   const [selectedSession, setSelectedSession] = useState<ExamSession | null>(null);
   const [loadingHistory, setLoadingHistory] = useState(false);
 
-  // Dashboard 統計狀態（含近50題專屬命中率與落點）
+  // Dashboard 統計狀態
   const [analyticsData, setAnalyticsData] = useState<{
     totalAnswered: number;
     totalCorrect: number;
@@ -72,6 +73,22 @@ export default function Home() {
     wrongQuestionCount: 0,
   });
   const [loadingDashboard, setLoadingDashboard] = useState(false);
+
+  // 讀取/儲存深色模式偏好
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('toeic_theme');
+    if (savedTheme === 'dark') {
+      setIsDarkMode(true);
+    }
+  }, []);
+
+  function toggleTheme() {
+    setIsDarkMode((prev) => {
+      const next = !prev;
+      localStorage.setItem('toeic_theme', next ? 'dark' : 'light');
+      return next;
+    });
+  }
 
   useEffect(() => {
     const list = currentUser === '寶寶' ? CHEER_MESSAGES_BAOBAO : CHEER_MESSAGES_BEAR;
@@ -178,7 +195,7 @@ export default function Home() {
     }
   }
 
-  // 🔥 錯題專項重練
+  // 錯題專項重練
   async function handlePracticeWrongQuestions() {
     setLoading(true);
     const userLabel = currentUser === '寶寶' ? '🐣 寶寶' : '🐻 熊熊';
@@ -226,7 +243,7 @@ export default function Home() {
     }
   }
 
-  // 取得 Dashboard 統計數據（修正 TypeScript 推論型別）
+  // Dashboard 統計數據
   async function loadDashboardData() {
     setLoadingDashboard(true);
     try {
@@ -264,7 +281,6 @@ export default function Home() {
       const totalCorrect = data.filter((d: any) => d.is_correct).length;
       const accuracy = Math.round((totalCorrect / totalAnswered) * 100);
 
-      // 取出最新 50 筆作答紀錄
       const recent50Items = data.slice(0, 50);
       const recent50Count = recent50Items.length;
       const recent50Correct = recent50Items.filter((d: any) => d.is_correct).length;
@@ -277,7 +293,6 @@ export default function Home() {
       else if (recent50Accuracy >= 65) estimated = '310 ~ 350 (綠色證書 📗)';
       else estimated = '240 ~ 300';
 
-      // 修正：相容 questions 為物件或陣列
       const topicMap = new Map<string, { total: number; correct: number }>();
       data.forEach((item: any) => {
         let t = '綜合題型';
@@ -488,6 +503,24 @@ export default function Home() {
     }
   }
 
+  // 🎨 樣式主題變數（深色模式與淺色模式）
+  const theme = {
+    bg: isDarkMode ? '#0f172a' : currentUser === '寶寶' ? '#fff1f2' : '#f0fdf4',
+    cardBg: isDarkMode ? '#1e293b' : '#ffffff',
+    cardBorder: isDarkMode
+      ? '#334155'
+      : currentUser === '寶寶'
+      ? '#ffe4e6'
+      : '#bbf7d0',
+    textMain: isDarkMode ? '#f8fafc' : '#0f172a',
+    textMuted: isDarkMode ? '#94a3b8' : '#64748b',
+    contextBg: isDarkMode ? '#334155' : '#f8fafc',
+    contextText: isDarkMode ? '#e2e8f0' : '#0f172a',
+    btnDefaultBg: isDarkMode ? '#334155' : '#ffffff',
+    btnDefaultBorder: isDarkMode ? '#475569' : '#cbd5e1',
+    userPrimary: currentUser === '寶寶' ? '#f43f5e' : '#059669',
+  };
+
   const currentQ = questions[currentIndex];
   const totalQuestions = questions.length;
   const answeredCount = Object.keys(userSelections).length;
@@ -497,23 +530,24 @@ export default function Home() {
   return (
     <main
       style={{
-        backgroundColor: currentUser === '寶寶' ? '#fff1f2' : '#f0fdf4',
+        backgroundColor: theme.bg,
         minHeight: '100vh',
         padding: '24px 12px',
         fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
         WebkitTapHighlightColor: 'transparent',
-        transition: 'background-color 0.3s ease',
+        transition: 'background-color 0.25s ease, color 0.25s ease',
+        color: theme.textMain,
       }}
     >
       <div style={{ maxWidth: '1024px', margin: '0 auto' }}>
         {/* 頂部 Header */}
         <header
           style={{
-            backgroundColor: '#ffffff',
+            backgroundColor: theme.cardBg,
             borderRadius: '24px',
             padding: '20px',
-            border: currentUser === '寶寶' ? '1px solid #ffe4e6' : '1px solid #bbf7d0',
-            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
+            border: `1px solid ${theme.cardBorder}`,
+            boxShadow: isDarkMode ? '0 4px 6px -1px rgba(0, 0, 0, 0.4)' : '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
             marginBottom: '16px',
             display: 'flex',
             flexWrap: 'wrap',
@@ -525,7 +559,7 @@ export default function Home() {
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               <span style={{ fontSize: '24px' }}>{currentUser === '寶寶' ? '🐣' : '🐻'}</span>
-              <h1 style={{ fontSize: '20px', fontWeight: '900', color: '#1e293b', margin: 0 }}>
+              <h1 style={{ fontSize: '20px', fontWeight: '900', color: theme.textMain, margin: 0 }}>
                 {currentUser === '寶寶' ? '🐣 寶寶' : '🐻 熊熊'}的多益全方位特訓室
               </h1>
 
@@ -533,11 +567,11 @@ export default function Home() {
               <div
                 style={{
                   display: 'inline-flex',
-                  backgroundColor: '#f1f5f9',
+                  backgroundColor: isDarkMode ? '#334155' : '#f1f5f9',
                   borderRadius: '14px',
                   padding: '3px',
                   marginLeft: '8px',
-                  border: '1px solid #e2e8f0',
+                  border: isDarkMode ? '1px solid #475569' : '1px solid #e2e8f0',
                 }}
               >
                 <button
@@ -551,7 +585,7 @@ export default function Home() {
                     border: 'none',
                     cursor: 'pointer',
                     backgroundColor: currentUser === '寶寶' ? '#f43f5e' : 'transparent',
-                    color: currentUser === '寶寶' ? '#ffffff' : '#64748b',
+                    color: currentUser === '寶寶' ? '#ffffff' : theme.textMuted,
                     boxShadow: currentUser === '寶寶' ? '0 2px 4px rgba(244,63,94,0.3)' : 'none',
                     transition: 'all 0.2s',
                   }}
@@ -569,7 +603,7 @@ export default function Home() {
                     border: 'none',
                     cursor: 'pointer',
                     backgroundColor: currentUser === '熊熊' ? '#059669' : 'transparent',
-                    color: currentUser === '熊熊' ? '#ffffff' : '#64748b',
+                    color: currentUser === '熊熊' ? '#ffffff' : theme.textMuted,
                     boxShadow: currentUser === '熊熊' ? '0 2px 4px rgba(5,150,105,0.3)' : 'none',
                     transition: 'all 0.2s',
                   }}
@@ -581,7 +615,7 @@ export default function Home() {
             <p
               style={{
                 fontSize: '13px',
-                color: currentUser === '寶寶' ? '#f43f5e' : '#059669',
+                color: currentUser === '寶寶' ? '#f43f5e' : '#10b981',
                 fontWeight: '500',
                 marginTop: '6px',
                 marginBottom: 0,
@@ -591,8 +625,8 @@ export default function Home() {
             </p>
           </div>
 
-          {/* 視圖切換：實戰特訓 / 戰力分析 Dashboard */}
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          {/* 視圖切換與深色模式切換 Icon */}
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
             <button
               onClick={() => setCurrentTab('practice')}
               style={{
@@ -601,9 +635,9 @@ export default function Home() {
                 fontSize: '13px',
                 fontWeight: 'bold',
                 cursor: 'pointer',
-                border: currentTab === 'practice' ? '2px solid #1e293b' : '1px solid #cbd5e1',
-                backgroundColor: currentTab === 'practice' ? '#1e293b' : '#ffffff',
-                color: currentTab === 'practice' ? '#ffffff' : '#1e293b',
+                border: currentTab === 'practice' ? (isDarkMode ? '2px solid #38bdf8' : '2px solid #1e293b') : `1px solid ${theme.btnDefaultBorder}`,
+                backgroundColor: currentTab === 'practice' ? (isDarkMode ? '#38bdf8' : '#1e293b') : theme.cardBg,
+                color: currentTab === 'practice' ? (isDarkMode ? '#0f172a' : '#ffffff') : theme.textMain,
               }}
             >
               ✍️ 實戰做題
@@ -616,13 +650,34 @@ export default function Home() {
                 fontSize: '13px',
                 fontWeight: 'bold',
                 cursor: 'pointer',
-                border: currentTab === 'dashboard' ? '2px solid #6366f1' : '1px solid #cbd5e1',
-                backgroundColor: currentTab === 'dashboard' ? '#6366f1' : '#ffffff',
-                color: currentTab === 'dashboard' ? '#ffffff' : '#4338ca',
+                border: currentTab === 'dashboard' ? '2px solid #6366f1' : `1px solid ${theme.btnDefaultBorder}`,
+                backgroundColor: currentTab === 'dashboard' ? '#6366f1' : theme.cardBg,
+                color: currentTab === 'dashboard' ? '#ffffff' : '#818cf8',
                 boxShadow: currentTab === 'dashboard' ? '0 4px 10px rgba(99, 102, 241, 0.25)' : 'none',
               }}
             >
               📈 弱點 Dashboard
+            </button>
+
+            {/* 🌙 / ☀️ 深色模式切換按鈕 */}
+            <button
+              type="button"
+              onClick={toggleTheme}
+              title={isDarkMode ? '切換為淺色模式' : '切換為辦公室深色摸魚模式'}
+              style={{
+                padding: '8px 12px',
+                borderRadius: '14px',
+                border: `1.5px solid ${isDarkMode ? '#e2e8f0' : '#475569'}`,
+                backgroundColor: isDarkMode ? '#334155' : '#f8fafc',
+                cursor: 'pointer',
+                fontSize: '16px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.2s ease',
+              }}
+            >
+              {isDarkMode ? '☀️' : '🌙'}
             </button>
           </div>
         </header>
@@ -631,8 +686,8 @@ export default function Home() {
         {currentTab === 'dashboard' ? (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {loadingDashboard ? (
-              <div style={{ padding: '60px', textAlign: 'center', backgroundColor: '#ffffff', borderRadius: '24px' }}>
-                <p style={{ color: '#6366f1', fontWeight: 'bold' }}>
+              <div style={{ padding: '60px', textAlign: 'center', backgroundColor: theme.cardBg, borderRadius: '24px' }}>
+                <p style={{ color: '#818cf8', fontWeight: 'bold' }}>
                   正在為【{currentUser === '寶寶' ? '🐣 寶寶' : '🐻 熊熊'}】運算多益弱點雷達... 📊
                 </p>
               </div>
@@ -640,47 +695,47 @@ export default function Home() {
               <>
                 {/* 頂部三卡片戰力總覽 */}
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
-                  <div style={{ backgroundColor: '#ffffff', padding: '20px', borderRadius: '20px', border: '1px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.04)' }}>
-                    <span style={{ fontSize: '13px', color: '#64748b', fontWeight: 'bold' }}>歷史總累積練習量</span>
-                    <div style={{ fontSize: '28px', fontWeight: '900', color: '#1e293b', marginTop: '6px' }}>
-                      {analyticsData.totalAnswered} <span style={{ fontSize: '14px', fontWeight: 'normal', color: '#94a3b8' }}>題</span>
+                  <div style={{ backgroundColor: theme.cardBg, padding: '20px', borderRadius: '20px', border: `1px solid ${theme.cardBorder}` }}>
+                    <span style={{ fontSize: '13px', color: theme.textMuted, fontWeight: 'bold' }}>歷史總累積練習量</span>
+                    <div style={{ fontSize: '28px', fontWeight: '900', color: theme.textMain, marginTop: '6px' }}>
+                      {analyticsData.totalAnswered} <span style={{ fontSize: '14px', fontWeight: 'normal', color: theme.textMuted }}>題</span>
                     </div>
                     <span style={{ fontSize: '12px', color: '#10b981', fontWeight: 'bold' }}>
                       歷史總答對率：{analyticsData.accuracy}%
                     </span>
                   </div>
 
-                  <div style={{ backgroundColor: '#ffffff', padding: '20px', borderRadius: '20px', border: '1px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.04)' }}>
-                    <span style={{ fontSize: '13px', color: '#64748b', fontWeight: 'bold' }}>
+                  <div style={{ backgroundColor: theme.cardBg, padding: '20px', borderRadius: '20px', border: `1px solid ${theme.cardBorder}` }}>
+                    <span style={{ fontSize: '13px', color: theme.textMuted, fontWeight: 'bold' }}>
                       🔥 近 {analyticsData.recent50Count} 題真實命中率
                     </span>
                     <div style={{ fontSize: '28px', fontWeight: '900', color: analyticsData.recent50Accuracy >= 80 ? '#10b981' : '#f43f5e', marginTop: '6px' }}>
                       {analyticsData.recent50Accuracy}%
                     </div>
-                    <span style={{ fontSize: '12px', color: '#64748b' }}>
+                    <span style={{ fontSize: '12px', color: theme.textMuted }}>
                       {analyticsData.recent50Accuracy >= 85 ? '🌟 近期手感極佳，達金色標準！' : '反應近期真實手感，持續攻克弱項！'}
                     </span>
                   </div>
 
-                  <div style={{ padding: '20px', borderRadius: '20px', border: '1px solid #c7d2fe', backgroundColor: '#f5f3ff', boxShadow: '0 2px 4px rgba(0,0,0,0.04)' }}>
-                    <span style={{ fontSize: '13px', color: '#4338ca', fontWeight: 'bold' }}>🎯 多益閱讀預估落點 (依近50題)</span>
-                    <div style={{ fontSize: '20px', fontWeight: '900', color: '#4338ca', marginTop: '6px' }}>
+                  <div style={{ padding: '20px', borderRadius: '20px', border: '1px solid #818cf8', backgroundColor: isDarkMode ? '#1e1b4b' : '#f5f3ff' }}>
+                    <span style={{ fontSize: '13px', color: isDarkMode ? '#a5b4fc' : '#4338ca', fontWeight: 'bold' }}>🎯 多益閱讀預估落點 (依近50題)</span>
+                    <div style={{ fontSize: '20px', fontWeight: '900', color: isDarkMode ? '#c7d2fe' : '#4338ca', marginTop: '6px' }}>
                       {analyticsData.estimatedScore}
                     </div>
-                    <span style={{ fontSize: '12px', color: '#6366f1' }}>
+                    <span style={{ fontSize: '12px', color: isDarkMode ? '#93c5fd' : '#6366f1' }}>
                       以最近 50 題常模推算（滿分 495）
                     </span>
                   </div>
                 </div>
 
                 {/* 弱點診斷雷達與專項加強行動區 */}
-                <div style={{ backgroundColor: '#ffffff', borderRadius: '24px', padding: '24px', border: '1px solid #e2e8f0' }}>
+                <div style={{ backgroundColor: theme.cardBg, borderRadius: '24px', padding: '24px', border: `1px solid ${theme.cardBorder}` }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', flexWrap: 'wrap', gap: '10px' }}>
                     <div>
-                      <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: '#1e293b', margin: 0 }}>
+                      <h3 style={{ fontSize: '18px', fontWeight: 'bold', color: theme.textMain, margin: 0 }}>
                         🔍 各考點答對率排行（最需加強的排在最上方）
                       </h3>
-                      <p style={{ fontSize: '12px', color: '#64748b', margin: '4px 0 0 0' }}>
+                      <p style={{ fontSize: '12px', color: theme.textMuted, margin: '4px 0 0 0' }}>
                         一眼看清失分黑洞，精準突破！
                       </p>
                     </div>
@@ -704,7 +759,7 @@ export default function Home() {
                   </div>
 
                   {analyticsData.topicStats.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '40px 0', color: '#94a3b8' }}>
+                    <div style={{ textAlign: 'center', padding: '40px 0', color: theme.textMuted }}>
                       目前還沒有作答紀錄，先去寫一組題再來檢視分析吧！✨
                     </div>
                   ) : (
@@ -719,13 +774,13 @@ export default function Home() {
                             style={{
                               padding: '14px 18px',
                               borderRadius: '16px',
-                              border: isWarning ? '1.5px solid #fecdd3' : '1px solid #f1f5f9',
-                              backgroundColor: isWarning ? '#fff1f2' : '#f8fafc',
+                              border: isWarning ? (isDarkMode ? '1.5px solid #e11d48' : '1.5px solid #fecdd3') : (isDarkMode ? '1px solid #334155' : '1px solid #f1f5f9'),
+                              backgroundColor: isWarning ? (isDarkMode ? '#4c0519' : '#fff1f2') : (isDarkMode ? '#0f172a' : '#f8fafc'),
                             }}
                           >
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <span style={{ fontWeight: 'bold', fontSize: '14px', color: '#0f172a' }}>
+                                <span style={{ fontWeight: 'bold', fontSize: '14px', color: theme.textMain }}>
                                   {item.topic}
                                 </span>
                                 {isWarning && (
@@ -739,7 +794,7 @@ export default function Home() {
                               </span>
                             </div>
 
-                            <div style={{ width: '100%', height: '8px', backgroundColor: '#e2e8f0', borderRadius: '9999px', overflow: 'hidden' }}>
+                            <div style={{ width: '100%', height: '8px', backgroundColor: isDarkMode ? '#334155' : '#e2e8f0', borderRadius: '9999px', overflow: 'hidden' }}>
                               <div
                                 style={{
                                   height: '100%',
@@ -764,7 +819,7 @@ export default function Home() {
             {/* 題型切換與換題工具列 */}
             <div
               style={{
-                backgroundColor: '#ffffff',
+                backgroundColor: theme.cardBg,
                 borderRadius: '20px',
                 padding: '12px 18px',
                 marginBottom: '16px',
@@ -773,15 +828,17 @@ export default function Home() {
                 alignItems: 'center',
                 flexWrap: 'wrap',
                 gap: '10px',
-                border: '1px solid #e2e8f0',
+                border: `1px solid ${theme.cardBorder}`,
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                 {(['Part 5', 'Part 6', 'Part 7', 'Mock 50'] as const).map((part) => {
                   const isSelected = selectedPart === part;
-                  const activeBg = currentUser === '寶寶' ? '#ffe4e6' : '#dcfce7';
+                  const activeBg = isDarkMode
+                    ? currentUser === '寶寶' ? '#881337' : '#064e3b'
+                    : currentUser === '寶寶' ? '#ffe4e6' : '#dcfce7';
                   const activeBorder = currentUser === '寶寶' ? '#f43f5e' : '#10b981';
-                  const activeColor = currentUser === '寶寶' ? '#e11d48' : '#047857';
+                  const activeColor = isDarkMode ? '#ffffff' : currentUser === '寶寶' ? '#e11d48' : '#047857';
 
                   return (
                     <button
@@ -796,9 +853,9 @@ export default function Home() {
                         fontSize: '12px',
                         fontWeight: 'bold',
                         cursor: 'pointer',
-                        border: isSelected ? `2px solid ${activeBorder}` : '1px solid #e2e8f0',
-                        backgroundColor: isSelected ? activeBg : '#ffffff',
-                        color: isSelected ? activeColor : '#475569',
+                        border: isSelected ? `2px solid ${activeBorder}` : `1px solid ${theme.btnDefaultBorder}`,
+                        backgroundColor: isSelected ? activeBg : theme.cardBg,
+                        color: isSelected ? activeColor : theme.textMuted,
                       }}
                     >
                       {part === 'Part 5'
@@ -818,12 +875,12 @@ export default function Home() {
                   onClick={fetchHistory}
                   style={{
                     padding: '8px 14px',
-                    backgroundColor: '#f1f5f9',
-                    color: '#1e293b',
+                    backgroundColor: isDarkMode ? '#334155' : '#f1f5f9',
+                    color: theme.textMain,
                     fontSize: '12px',
                     fontWeight: 'bold',
                     borderRadius: '12px',
-                    border: '1px solid #cbd5e1',
+                    border: `1px solid ${theme.btnDefaultBorder}`,
                     cursor: 'pointer',
                   }}
                 >
@@ -854,13 +911,13 @@ export default function Home() {
                 style={{
                   padding: '14px',
                   marginBottom: '16px',
-                  backgroundColor: '#ffffff',
-                  border: currentUser === '寶寶' ? '1px solid #fecdd3' : '1px solid #a7f3d0',
+                  backgroundColor: theme.cardBg,
+                  border: isDarkMode ? '1px solid #475569' : currentUser === '寶寶' ? '1px solid #fecdd3' : '1px solid #a7f3d0',
                   borderRadius: '20px',
                   textAlign: 'center',
                   fontSize: '14px',
                   fontWeight: 'bold',
-                  color: currentUser === '寶寶' ? '#f43f5e' : '#059669',
+                  color: currentUser === '寶寶' ? '#f43f5e' : '#10b981',
                 }}
               >
                 {loadingText}
@@ -874,22 +931,22 @@ export default function Home() {
                   style={{
                     flex: '1 1 240px',
                     maxWidth: '280px',
-                    backgroundColor: '#ffffff',
+                    backgroundColor: theme.cardBg,
                     borderRadius: '20px',
                     padding: '18px',
-                    border: currentUser === '寶寶' ? '1px solid #ffe4e6' : '1px solid #bbf7d0',
-                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
+                    border: `1px solid ${theme.cardBorder}`,
+                    boxShadow: isDarkMode ? '0 4px 6px -1px rgba(0,0,0,0.4)' : '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
                     height: 'fit-content',
                   }}
                 >
                   <div style={{ marginBottom: '14px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                      <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#94a3b8' }}>本組進度</span>
-                      <span style={{ fontSize: '12px', fontWeight: 'bold', color: currentUser === '寶寶' ? '#f43f5e' : '#059669' }}>
+                      <span style={{ fontSize: '12px', fontWeight: 'bold', color: theme.textMuted }}>本組進度</span>
+                      <span style={{ fontSize: '12px', fontWeight: 'bold', color: currentUser === '寶寶' ? '#f43f5e' : '#10b981' }}>
                         {answeredCount} / {totalQuestions}
                       </span>
                     </div>
-                    <div style={{ width: '100%', backgroundColor: '#f1f5f9', height: '6px', borderRadius: '9999px', overflow: 'hidden' }}>
+                    <div style={{ width: '100%', backgroundColor: isDarkMode ? '#334155' : '#f1f5f9', height: '6px', borderRadius: '9999px', overflow: 'hidden' }}>
                       <div
                         style={{
                           backgroundColor: currentUser === '寶寶' ? '#fb7185' : '#34d399',
@@ -920,33 +977,33 @@ export default function Home() {
                       const isCorrect = isSubmitted && selectedKey === q.answer;
                       const isWrong = isSubmitted && isAnswered && !isCorrect;
 
-                      let bgColor = '#ffffff';
-                      let borderColor = '#cbd5e1';
-                      let textColor = '#0f172a';
+                      let bgColor = isDarkMode ? '#1e293b' : '#ffffff';
+                      let borderColor = isDarkMode ? '#475569' : '#cbd5e1';
+                      let textColor = theme.textMain;
                       let boxShadow = 'none';
 
                       if (isAnswered) {
-                        bgColor = '#ecfdf5';
-                        borderColor = '#a7f3d0';
-                        textColor = '#065f46';
+                        bgColor = isDarkMode ? '#064e3b' : '#ecfdf5';
+                        borderColor = '#10b981';
+                        textColor = isDarkMode ? '#a7f3d0' : '#065f46';
                       }
 
                       if (isCurrent) {
-                        borderColor = '#1e293b';
-                        boxShadow = '0 0 0 2.5px #1e293b';
-                        if (!isAnswered) bgColor = '#f8fafc';
+                        borderColor = isDarkMode ? '#38bdf8' : '#1e293b';
+                        boxShadow = isDarkMode ? '0 0 0 2.5px #38bdf8' : '0 0 0 2.5px #1e293b';
+                        if (!isAnswered) bgColor = isDarkMode ? '#334155' : '#f8fafc';
                       }
 
                       if (isSubmitted) {
                         if (isCorrect) {
-                          bgColor = '#ecfdf5';
+                          bgColor = isDarkMode ? '#064e3b' : '#ecfdf5';
                           borderColor = '#10b981';
-                          textColor = '#065f46';
+                          textColor = isDarkMode ? '#a7f3d0' : '#065f46';
                           boxShadow = isCurrent ? '0 0 0 2.5px #10b981' : 'none';
                         } else if (isWrong) {
-                          bgColor = '#fff1f2';
+                          bgColor = isDarkMode ? '#881337' : '#fff1f2';
                           borderColor = '#fb7185';
-                          textColor = '#9f1239';
+                          textColor = isDarkMode ? '#fecdd3' : '#9f1239';
                           boxShadow = isCurrent ? '0 0 0 2.5px #f43f5e' : 'none';
                         }
                       }
@@ -1012,11 +1069,11 @@ export default function Home() {
                     </button>
                   ) : (
                     <div style={{ textAlign: 'center', padding: '6px 0' }}>
-                      <span style={{ fontSize: '24px', fontWeight: '900', color: currentUser === '寶寶' ? '#f43f5e' : '#059669' }}>
+                      <span style={{ fontSize: '24px', fontWeight: '900', color: currentUser === '寶寶' ? '#f43f5e' : '#10b981' }}>
                         {correctCount}
                       </span>
-                      <span style={{ color: '#94a3b8' }}> / {totalQuestions}</span>
-                      <p style={{ fontSize: '12px', color: '#64748b', margin: '4px 0 0 0' }}>
+                      <span style={{ color: theme.textMuted }}> / {totalQuestions}</span>
+                      <p style={{ fontSize: '12px', color: theme.textMuted, margin: '4px 0 0 0' }}>
                         {correctCount === totalQuestions ? '🎉 滿分太神啦！' : '很棒！解析弄懂實力再躍進！'}
                       </p>
                     </div>
@@ -1028,28 +1085,28 @@ export default function Home() {
                   {currentQ && (
                     <div
                       style={{
-                        backgroundColor: '#ffffff',
+                        backgroundColor: theme.cardBg,
                         borderRadius: '24px',
                         padding: '24px',
-                        border: currentUser === '寶寶' ? '1px solid #ffe4e6' : '1px solid #bbf7d0',
-                        boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
+                        border: `1px solid ${theme.cardBorder}`,
+                        boxShadow: isDarkMode ? '0 4px 6px -1px rgba(0,0,0,0.4)' : '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
                       }}
                     >
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '14px' }}>
                         <span
                           style={{
                             padding: '4px 10px',
-                            backgroundColor: currentUser === '寶寶' ? '#fff1f2' : '#f0fdf4',
-                            color: currentUser === '寶寶' ? '#e11d48' : '#047857',
+                            backgroundColor: isDarkMode ? '#334155' : currentUser === '寶寶' ? '#fff1f2' : '#f0fdf4',
+                            color: currentUser === '寶寶' ? '#fb7185' : '#34d399',
                             fontSize: '12px',
                             fontWeight: 'bold',
                             borderRadius: '9999px',
-                            border: currentUser === '寶寶' ? '1px solid #ffe4e6' : '1px solid #bbf7d0',
+                            border: isDarkMode ? '1px solid #475569' : currentUser === '寶寶' ? '1px solid #ffe4e6' : '1px solid #bbf7d0',
                           }}
                         >
                           {currentQ.part} · {currentQ.topic || '題組'}
                         </span>
-                        <span style={{ fontSize: '13px', color: '#94a3b8' }}>
+                        <span style={{ fontSize: '13px', color: theme.textMuted }}>
                           第 {currentIndex + 1} / {totalQuestions} 題
                         </span>
                       </div>
@@ -1057,14 +1114,14 @@ export default function Home() {
                       {currentQ.context && (
                         <div
                           style={{
-                            backgroundColor: '#f8fafc',
-                            border: '1px solid #cbd5e1',
+                            backgroundColor: theme.contextBg,
+                            border: isDarkMode ? '1px solid #475569' : '1px solid #cbd5e1',
                             borderRadius: '14px',
                             padding: '16px',
                             marginBottom: '18px',
                             fontSize: '15px',
                             lineHeight: '1.7',
-                            color: '#0f172a',
+                            color: theme.contextText,
                             whiteSpace: 'pre-line',
                             fontFamily: 'Georgia, serif',
                           }}
@@ -1077,7 +1134,7 @@ export default function Home() {
                         style={{
                           fontSize: '16px',
                           fontWeight: '700',
-                          color: '#0f172a',
+                          color: theme.textMain,
                           lineHeight: '1.6',
                           marginBottom: '18px',
                         }}
@@ -1089,18 +1146,18 @@ export default function Home() {
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
                         {Object.entries(currentQ.options || {}).map(([key, val]: any) => {
                           const selected = userSelections[currentIndex] === key;
-                          let itemBg = '#ffffff';
-                          let itemBorder = '#e2e8f0';
+                          let itemBg = theme.cardBg;
+                          let itemBorder = isDarkMode ? '#334155' : '#e2e8f0';
 
                           if (!isSubmitted && selected) {
-                            itemBg = currentUser === '寶寶' ? '#fff1f2' : '#f0fdf4';
+                            itemBg = isDarkMode ? (currentUser === '寶寶' ? '#881337' : '#064e3b') : (currentUser === '寶寶' ? '#fff1f2' : '#f0fdf4');
                             itemBorder = currentUser === '寶寶' ? '#fb7185' : '#34d399';
                           } else if (isSubmitted) {
                             if (key === currentQ.answer) {
-                              itemBg = '#ecfdf5';
+                              itemBg = isDarkMode ? '#064e3b' : '#ecfdf5';
                               itemBorder = '#10b981';
                             } else if (selected) {
-                              itemBg = '#fff1f2';
+                              itemBg = isDarkMode ? '#881337' : '#fff1f2';
                               itemBorder = '#fb7185';
                             }
                           }
@@ -1117,7 +1174,7 @@ export default function Home() {
                                 borderRadius: '14px',
                                 border: `1.5px solid ${itemBorder}`,
                                 backgroundColor: itemBg,
-                                color: '#0f172a',
+                                color: theme.textMain,
                                 cursor: isSubmitted ? 'default' : 'pointer',
                                 display: 'flex',
                                 alignItems: 'center',
@@ -1136,8 +1193,8 @@ export default function Home() {
                                   justifyContent: 'center',
                                   fontSize: '13px',
                                   fontWeight: 'bold',
-                                  backgroundColor: selected ? (currentUser === '寶寶' ? '#f43f5e' : '#059669') : '#f1f5f9',
-                                  color: selected ? '#ffffff' : '#0f172a',
+                                  backgroundColor: selected ? (currentUser === '寶寶' ? '#f43f5e' : '#059669') : (isDarkMode ? '#334155' : '#f1f5f9'),
+                                  color: selected ? '#ffffff' : theme.textMain,
                                   flexShrink: 0,
                                 }}
                               >
@@ -1146,14 +1203,14 @@ export default function Home() {
                               <span
                                 style={{
                                   flex: 1,
-                                  color: '#0f172a',
+                                  color: theme.textMain,
                                   fontWeight: selected ? '600' : '400',
                                 }}
                               >
                                 {val}
                               </span>
                               {isSubmitted && key === currentQ.answer && (
-                                <span style={{ fontSize: '13px', color: '#059669', fontWeight: 'bold' }}>✓ 正解</span>
+                                <span style={{ fontSize: '13px', color: '#10b981', fontWeight: 'bold' }}>✓ 正解</span>
                               )}
                             </button>
                           );
@@ -1166,7 +1223,7 @@ export default function Home() {
                           display: 'flex',
                           justifyContent: 'space-between',
                           paddingTop: '14px',
-                          borderTop: '1px solid #f1f5f9',
+                          borderTop: isDarkMode ? '1px solid #334155' : '1px solid #f1f5f9',
                         }}
                       >
                         <button
@@ -1174,11 +1231,11 @@ export default function Home() {
                           disabled={currentIndex === 0}
                           style={{
                             padding: '8px 14px',
-                            border: '1px solid #cbd5e1',
+                            border: `1px solid ${theme.btnDefaultBorder}`,
                             borderRadius: '10px',
                             fontSize: '13px',
-                            color: '#0f172a',
-                            backgroundColor: '#ffffff',
+                            color: theme.textMain,
+                            backgroundColor: theme.cardBg,
                             cursor: currentIndex === 0 ? 'not-allowed' : 'pointer',
                             opacity: currentIndex === 0 ? 0.4 : 1,
                           }}
@@ -1190,11 +1247,12 @@ export default function Home() {
                           disabled={currentIndex === totalQuestions - 1}
                           style={{
                             padding: '8px 14px',
-                            backgroundColor: '#0f172a',
-                            color: '#ffffff',
+                            backgroundColor: isDarkMode ? '#38bdf8' : '#0f172a',
+                            color: isDarkMode ? '#0f172a' : '#ffffff',
                             border: 'none',
                             borderRadius: '10px',
                             fontSize: '13px',
+                            fontWeight: 'bold',
                             cursor: currentIndex === totalQuestions - 1 ? 'not-allowed' : 'pointer',
                             opacity: currentIndex === totalQuestions - 1 ? 0.4 : 1,
                           }}
@@ -1209,24 +1267,24 @@ export default function Home() {
                           style={{
                             marginTop: '18px',
                             padding: '16px',
-                            backgroundColor: currentUser === '寶寶' ? '#fff1f2' : '#f0fdf4',
+                            backgroundColor: isDarkMode ? '#1e293b' : currentUser === '寶寶' ? '#fff1f2' : '#f0fdf4',
                             borderRadius: '14px',
-                            border: currentUser === '寶寶' ? '1px solid #ffe4e6' : '1px solid #bbf7d0',
+                            border: isDarkMode ? '1px solid #475569' : currentUser === '寶寶' ? '1px solid #ffe4e6' : '1px solid #bbf7d0',
                           }}
                         >
                           <div style={{ marginBottom: '8px' }}>
-                            <h4 style={{ fontSize: '12px', fontWeight: 'bold', color: '#94a3b8', margin: '0 0 4px 0' }}>
+                            <h4 style={{ fontSize: '12px', fontWeight: 'bold', color: theme.textMuted, margin: '0 0 4px 0' }}>
                               中文翻譯
                             </h4>
-                            <p style={{ fontSize: '14px', color: '#0f172a', margin: 0, lineHeight: '1.6' }}>
+                            <p style={{ fontSize: '14px', color: theme.textMain, margin: 0, lineHeight: '1.6' }}>
                               {currentQ.translation}
                             </p>
                           </div>
-                          <div style={{ paddingTop: '8px', borderTop: currentUser === '寶寶' ? '1px solid #ffe4e6' : '1px solid #bbf7d0' }}>
-                            <h4 style={{ fontSize: '12px', fontWeight: 'bold', color: currentUser === '寶寶' ? '#f43f5e' : '#059669', margin: '0 0 4px 0' }}>
+                          <div style={{ paddingTop: '8px', borderTop: isDarkMode ? '1px solid #334155' : currentUser === '寶寶' ? '1px solid #ffe4e6' : '1px solid #bbf7d0' }}>
+                            <h4 style={{ fontSize: '12px', fontWeight: 'bold', color: currentUser === '寶寶' ? '#f43f5e' : '#10b981', margin: '0 0 4px 0' }}>
                               考點詳解
                             </h4>
-                            <p style={{ fontSize: '14px', color: '#0f172a', margin: 0, lineHeight: '1.6' }}>
+                            <p style={{ fontSize: '14px', color: theme.textMain, margin: 0, lineHeight: '1.6' }}>
                               {currentQ.explanation}
                             </p>
                           </div>
@@ -1242,12 +1300,12 @@ export default function Home() {
                   style={{
                     textAlign: 'center',
                     padding: '60px 20px',
-                    backgroundColor: '#ffffff',
+                    backgroundColor: theme.cardBg,
                     borderRadius: '24px',
-                    border: '2px dashed #cbd5e1',
+                    border: isDarkMode ? '2px dashed #475569' : '2px dashed #cbd5e1',
                   }}
                 >
-                  <p style={{ color: '#64748b', marginBottom: '14px' }}>目前沒有題組喔！</p>
+                  <p style={{ color: theme.textMuted, marginBottom: '14px' }}>目前沒有題組喔！</p>
                 </div>
               )
             )}
@@ -1263,7 +1321,7 @@ export default function Home() {
               left: 0,
               right: 0,
               bottom: 0,
-              backgroundColor: 'rgba(15, 23, 42, 0.6)',
+              backgroundColor: 'rgba(15, 23, 42, 0.75)',
               backdropFilter: 'blur(4px)',
               display: 'flex',
               alignItems: 'center',
@@ -1274,22 +1332,22 @@ export default function Home() {
           >
             <div
               style={{
-                backgroundColor: '#ffffff',
+                backgroundColor: theme.cardBg,
                 borderRadius: '24px',
                 maxWidth: '680px',
                 width: '100%',
                 maxHeight: '85vh',
                 display: 'flex',
                 flexDirection: 'column',
-                boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
-                border: '1px solid #cbd5e1',
+                boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.5)',
+                border: `1px solid ${theme.cardBorder}`,
                 overflow: 'hidden',
               }}
             >
               <div
                 style={{
                   padding: '16px 20px',
-                  borderBottom: '1px solid #f1f5f9',
+                  borderBottom: isDarkMode ? '1px solid #334155' : '1px solid #f1f5f9',
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
@@ -1302,18 +1360,18 @@ export default function Home() {
                       style={{
                         padding: '4px 10px',
                         borderRadius: '8px',
-                        border: '1px solid #cbd5e1',
-                        backgroundColor: '#ffffff',
+                        border: `1px solid ${theme.btnDefaultBorder}`,
+                        backgroundColor: theme.cardBg,
                         cursor: 'pointer',
                         fontSize: '12px',
                         fontWeight: 'bold',
-                        color: '#0f172a',
+                        color: theme.textMain,
                       }}
                     >
                       ← 返回列表
                     </button>
                   )}
-                  <h3 style={{ fontSize: '17px', fontWeight: 'bold', color: '#0f172a', margin: 0 }}>
+                  <h3 style={{ fontSize: '17px', fontWeight: 'bold', color: theme.textMain, margin: 0 }}>
                     {selectedSession
                       ? `📝 ${selectedSession.dateStr} 作答詳情`
                       : `📊 ${currentUser === '寶寶' ? '🐣 寶寶' : '🐻 熊熊'}的歷次考試紀錄`}
@@ -1323,13 +1381,13 @@ export default function Home() {
                   onClick={() => setShowHistoryModal(false)}
                   style={{
                     border: 'none',
-                    backgroundColor: '#f1f5f9',
+                    backgroundColor: isDarkMode ? '#334155' : '#f1f5f9',
                     borderRadius: '10px',
                     width: '30px',
                     height: '30px',
                     cursor: 'pointer',
                     fontSize: '14px',
-                    color: '#64748b',
+                    color: theme.textMuted,
                   }}
                 >
                   ✕
@@ -1338,12 +1396,12 @@ export default function Home() {
 
               <div style={{ padding: '16px 20px', overflowY: 'auto', flex: 1 }}>
                 {loadingHistory ? (
-                  <div style={{ textAlign: 'center', padding: '40px 0', color: currentUser === '寶寶' ? '#f43f5e' : '#059669', fontWeight: 'bold' }}>
+                  <div style={{ textAlign: 'center', padding: '40px 0', color: currentUser === '寶寶' ? '#f43f5e' : '#10b981', fontWeight: 'bold' }}>
                     整理【{currentUser === '寶寶' ? '🐣 寶寶' : '🐻 熊熊'}】的紀錄中... 🐾
                   </div>
                 ) : !selectedSession ? (
                   examSessions.length === 0 ? (
-                    <div style={{ textAlign: 'center', padding: '40px 0', color: '#94a3b8' }}>
+                    <div style={{ textAlign: 'center', padding: '40px 0', color: theme.textMuted }}>
                       【{currentUser === '寶寶' ? '🐣 寶寶' : '🐻 熊熊'}】目前還沒有考試紀錄喔，去寫一組試試吧！✨
                     </div>
                   ) : (
@@ -1355,8 +1413,8 @@ export default function Home() {
                           style={{
                             padding: '14px 18px',
                             borderRadius: '14px',
-                            border: currentUser === '寶寶' ? '1px solid #ffe4e6' : '1px solid #bbf7d0',
-                            backgroundColor: currentUser === '寶寶' ? '#fff1f2' : '#f0fdf4',
+                            border: `1px solid ${theme.cardBorder}`,
+                            backgroundColor: isDarkMode ? '#0f172a' : (currentUser === '寶寶' ? '#fff1f2' : '#f0fdf4'),
                             display: 'flex',
                             justifyContent: 'space-between',
                             alignItems: 'center',
@@ -1366,7 +1424,7 @@ export default function Home() {
                         >
                           <div style={{ flex: 1 }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '2px' }}>
-                              <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#0f172a' }}>
+                              <span style={{ fontSize: '14px', fontWeight: 'bold', color: theme.textMain }}>
                                 {session.dateStr}
                               </span>
                               <span
@@ -1382,21 +1440,21 @@ export default function Home() {
                                 {session.part}
                               </span>
                             </div>
-                            <span style={{ fontSize: '12px', color: '#64748b' }}>
+                            <span style={{ fontSize: '12px', color: theme.textMuted }}>
                               共 {session.total} 題 · 點擊查看題目光碟 🔍
                             </span>
                           </div>
 
                           <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
                             <div style={{ textAlign: 'right' }}>
-                              <div style={{ fontSize: '15px', fontWeight: '900', color: currentUser === '寶寶' ? '#f43f5e' : '#059669' }}>
+                              <div style={{ fontSize: '15px', fontWeight: '900', color: currentUser === '寶寶' ? '#f43f5e' : '#10b981' }}>
                                 {session.correct} / {session.total} 題
                               </div>
                               <span
                                 style={{
                                   fontSize: '12px',
                                   fontWeight: 'bold',
-                                  color: session.accuracy >= 70 ? '#059669' : '#e11d48',
+                                  color: session.accuracy >= 70 ? '#10b981' : '#f43f5e',
                                 }}
                               >
                                 答對率 {session.accuracy}%
@@ -1409,9 +1467,9 @@ export default function Home() {
                               title="刪除此筆紀錄"
                               style={{
                                 padding: '6px 10px',
-                                backgroundColor: '#ffffff',
-                                border: '1px solid #cbd5e1',
-                                color: '#e11d48',
+                                backgroundColor: theme.cardBg,
+                                border: '1px solid #ef4444',
+                                color: '#ef4444',
                                 borderRadius: '10px',
                                 fontSize: '12px',
                                 fontWeight: 'bold',
@@ -1430,15 +1488,15 @@ export default function Home() {
                     <div
                       style={{
                         padding: '10px 14px',
-                        backgroundColor: '#f8fafc',
+                        backgroundColor: isDarkMode ? '#334155' : '#f8fafc',
                         borderRadius: '12px',
-                        border: '1px solid #e2e8f0',
+                        border: isDarkMode ? '1px solid #475569' : '1px solid #e2e8f0',
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center',
                       }}
                     >
-                      <span style={{ fontSize: '13px', fontWeight: '600', color: '#0f172a' }}>
+                      <span style={{ fontSize: '13px', fontWeight: '600', color: theme.textMain }}>
                         作答者：{currentUser === '寶寶' ? '🐣 寶寶' : '🐻 熊熊'} | 成績：{selectedSession.correct} / {selectedSession.total} ({selectedSession.accuracy}%)
                       </span>
                       <button
@@ -1446,7 +1504,7 @@ export default function Home() {
                         onClick={(e) => handleDeleteSession(e, selectedSession)}
                         style={{
                           padding: '4px 10px',
-                          backgroundColor: '#ffffff',
+                          backgroundColor: theme.cardBg,
                           border: '1px solid #fecdd3',
                           color: '#e11d48',
                           borderRadius: '8px',
@@ -1474,8 +1532,8 @@ export default function Home() {
                           style={{
                             padding: '16px',
                             borderRadius: '16px',
-                            border: `1.5px solid ${isCorrect ? '#a7f3d0' : '#fecdd3'}`,
-                            backgroundColor: isCorrect ? '#f0fdf4' : '#fff1f2',
+                            border: `1.5px solid ${isCorrect ? '#10b981' : '#f43f5e'}`,
+                            backgroundColor: isDarkMode ? (isCorrect ? '#064e3b' : '#4c0519') : (isCorrect ? '#f0fdf4' : '#fff1f2'),
                           }}
                         >
                           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
@@ -1493,7 +1551,7 @@ export default function Home() {
                             </span>
                           </div>
 
-                          <p style={{ fontSize: '14px', fontWeight: '700', color: '#0f172a', marginBottom: '12px', lineHeight: '1.5' }}>
+                          <p style={{ fontSize: '14px', fontWeight: '700', color: theme.textMain, marginBottom: '12px', lineHeight: '1.5' }}>
                             {qObj?.question}
                           </p>
 
@@ -1504,20 +1562,20 @@ export default function Home() {
                                 const isUserPick = userChoice === optKey;
                                 const isAnswerKey = correctChoice === optKey;
 
-                                let optBg = '#ffffff';
-                                let optBorder = '#e2e8f0';
+                                let optBg = theme.cardBg;
+                                let optBorder = isDarkMode ? '#475569' : '#e2e8f0';
                                 let tagText = '';
-                                let tagBg = '#f1f5f9';
-                                let tagColor = '#475569';
+                                let tagBg = isDarkMode ? '#334155' : '#f1f5f9';
+                                let tagColor = theme.textMuted;
 
                                 if (isAnswerKey) {
-                                  optBg = '#ecfdf5';
+                                  optBg = isDarkMode ? '#064e3b' : '#ecfdf5';
                                   optBorder = '#10b981';
                                   tagText = '✓ 正解';
                                   tagBg = '#10b981';
                                   tagColor = '#ffffff';
                                 } else if (isUserPick && !isCorrect) {
-                                  optBg = '#fff1f2';
+                                  optBg = isDarkMode ? '#881337' : '#fff1f2';
                                   optBorder = '#fb7185';
                                   tagText = `✕ ${currentUser === '寶寶' ? '🐣 寶寶' : '🐻 熊熊'}選這個`;
                                   tagBg = '#f43f5e';
@@ -1536,7 +1594,7 @@ export default function Home() {
                                       alignItems: 'center',
                                       justifyContent: 'space-between',
                                       fontSize: '13px',
-                                      color: '#0f172a',
+                                      color: theme.textMain,
                                     }}
                                   >
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1545,8 +1603,8 @@ export default function Home() {
                                           width: '22px',
                                           height: '22px',
                                           borderRadius: '6px',
-                                          backgroundColor: isUserPick ? (isCorrect ? '#10b981' : '#f43f5e') : '#e2e8f0',
-                                          color: isUserPick ? '#ffffff' : '#334155',
+                                          backgroundColor: isUserPick ? (isCorrect ? '#10b981' : '#f43f5e') : (isDarkMode ? '#334155' : '#e2e8f0'),
+                                          color: isUserPick ? '#ffffff' : theme.textMain,
                                           display: 'inline-flex',
                                           alignItems: 'center',
                                           justifyContent: 'center',
@@ -1583,7 +1641,7 @@ export default function Home() {
                           )}
 
                           {qObj?.explanation && (
-                            <div style={{ fontSize: '12px', color: '#64748b', marginTop: '6px', paddingTop: '8px', borderTop: '1px dashed #cbd5e1', lineHeight: '1.6' }}>
+                            <div style={{ fontSize: '12px', color: theme.textMuted, marginTop: '6px', paddingTop: '8px', borderTop: isDarkMode ? '1px dashed #475569' : '1px dashed #cbd5e1', lineHeight: '1.6' }}>
                               💡 解析：{qObj?.explanation}
                             </div>
                           )}
